@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 export default function SignupPage() {
   const supabase = createClient();
+  const params = useSearchParams();
+  const intendedRole = params.get("role");
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +30,7 @@ export default function SignupPage() {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
+          intended_role: intendedRole || "tourist",
         },
       },
     });
@@ -42,7 +47,15 @@ export default function SignupPage() {
 
   return (
     <main className="mx-auto max-w-md p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Create account</h1>
+      <h1 className="mb-2 text-2xl font-semibold">
+        {intendedRole === "vendor" ? "Become a Partner" : "Create account"}
+      </h1>
+
+      <p className="mb-6 text-sm text-neutral-600">
+        {intendedRole === "vendor"
+          ? "Create your account to start listing experiences on Lucia Now."
+          : "Create your Lucia Now account to save details and book experiences."}
+      </p>
 
       <form onSubmit={handleSignup} className="space-y-4">
         <input
@@ -83,6 +96,13 @@ export default function SignupPage() {
           {loading ? "Creating account..." : "Create account"}
         </button>
       </form>
+
+      <p className="mt-6 text-sm text-neutral-600">
+        Already have an account?{" "}
+        <Link href="/auth/login" className="font-medium underline">
+          Login
+        </Link>
+      </p>
     </main>
   );
 }

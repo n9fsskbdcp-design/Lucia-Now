@@ -1,185 +1,110 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-export default async function HomePage() {
-  const { data: items } = await supabaseAdmin
-    .from("experiences")
+export default async function VendorPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "vendor" && profile?.role !== "admin") {
+    redirect("/");
+  }
+
+  const { data: vendor } = await supabaseAdmin
+    .from("vendors")
     .select("*")
-    .eq("status", "published")
-    .eq("is_active", true)
-    .order("featured_score", {
-      ascending: false,
-    })
-    .limit(3);
+    .eq("owner_user_id", user.id)
+    .single();
+
+  if (!vendor) {
+    redirect("/vendor/experiences");
+  }
+
+  const { data: requests } = await supabaseAdmin
+    .from("booking_requests")
+    .select(
+      `
+      *,
+      experiences (
+        title,
+        slug
+      )
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  const vendorExperienceIds =
+    (
+      await supabaseAdmin
+        .from("experiences")
+        .select("id")
+        .eq("vendor_id", vendor.id)
+    ).data?.map((e) => e.id) ?? [];
+
+  const filtered = (requests ?? []).filter((r) =>
+    vendorExperienceIds.includes(r.experience_id)
+  );
 
   return (
-    <main className="bg-white">
-      {/* HERO */}
-      <section className="relative min-h-[720px] overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
-          alt="St Lucia"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+    <main className="min-h-screen bg-neutral-50">
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <p className="text-sm text-neutral-500">Vendor</p>
+        <h1 className="mt-3 text-4xl font-semibold">Booking Leads</h1>
 
-        <div className="absolute inset-0 bg-black/40" />
-
-        <div className="relative mx-auto flex min-h-[720px] max-w-7xl items-center px-6">
-          <div className="max-w-3xl text-white">
-            <p className="text-sm uppercase tracking-[0.25em] text-white/80">
-              St Lucia Experiences
-            </p>
-
-            <h1 className="mt-5 text-6xl font-semibold leading-tight">
-              Book unforgettable island experiences.
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-xl text-white/90">
-              Luxury boat days, trusted drivers,
-              curated tours and premium last-minute
-              experiences available now.
-            </p>
-
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link
-                href="/experiences"
-                className="rounded-xl bg-white px-6 py-4 text-black"
-              >
-                Browse Experiences
-              </Link>
-
-              <Link
-                href="/vendor/experiences"
-                className="rounded-xl border border-white/50 px-6 py-4 text-white"
-              >
-                Become a Partner
-              </Link>
+        <div className="mt-10 space-y-4">
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl bg-white p-8 shadow-sm">
+              <p className="text-neutral-500">No booking requests yet.</p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TRUST */}
-      <section className="border-y bg-neutral-50">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-14 md:grid-cols-3">
-          <Trust
-            title="Trusted Local Vendors"
-            text="Verified operators and reliable local experiences."
-          />
-
-          <Trust
-            title="Easy Booking"
-            text="Simple, fast booking flow built for travelers."
-          />
-
-          <Trust
-            title="Premium Selection"
-            text="Only high-quality experiences worth your time."
-          />
-        </div>
-      </section>
-
-      {/* FEATURED */}
-      <section className="mx-auto max-w-7xl px-6 py-20">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-              Featured
-            </p>
-
-            <h2 className="mt-3 text-4xl font-semibold">
-              Popular right now
-            </h2>
-          </div>
-
-          <Link
-            href="/experiences"
-            className="text-sm font-medium"
-          >
-            View all
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {items?.map((item) => (
-            <Link
-              key={item.id}
-              href={`/experiences/${item.slug}`}
-              className="overflow-hidden rounded-3xl border bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-            >
-              <img
-                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
-                alt={item.title}
-                className="h-64 w-full object-cover"
-              />
-
-              <div className="p-6">
-                <h3 className="text-xl font-semibold">
-                  {item.title}
-                </h3>
-
-                <p className="mt-3 text-sm text-neutral-500 line-clamp-2">
-                  {item.short_description}
-                </p>
-
-                <div className="mt-5 flex items-end justify-between">
+          ) : (
+            filtered.map((request) => (
+              <div
+                key={request.id}
+                className="rounded-2xl bg-white p-6 shadow-sm"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="text-sm text-neutral-500">
-                      From
+                    <h2 className="text-xl font-semibold">
+                      {request.experiences?.title || "Experience"}
+                    </h2>
+
+                    <p className="mt-2 text-sm text-neutral-500">
+                      {request.guest_name} · {request.guest_email}
                     </p>
 
-                    <p className="text-2xl font-semibold">
-                      ${item.base_price}
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Guests: {request.guests}
                     </p>
+
+                    {request.notes ? (
+                      <p className="mt-3 text-sm text-neutral-700">
+                        {request.notes}
+                      </p>
+                    ) : null}
                   </div>
 
-                  <span className="rounded-xl bg-black px-4 py-2 text-sm text-white">
-                    View
+                  <span className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
+                    {request.status}
                   </span>
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-black py-20 text-white">
-        <div className="mx-auto max-w-7xl px-6">
-          <h2 className="text-4xl font-semibold">
-            Own tours or transport in St Lucia?
-          </h2>
-
-          <p className="mt-4 max-w-2xl text-white/75">
-            Join Lucia Now and receive high-intent
-            travelers looking to book now.
-          </p>
-
-          <Link
-            href="/vendor/experiences"
-            className="mt-8 inline-block rounded-xl bg-white px-6 py-4 text-black"
-          >
-            Become a Partner
-          </Link>
+            ))
+          )}
         </div>
       </section>
     </main>
-  );
-}
-
-function Trust({
-  title,
-  text,
-}: {
-  title: string;
-  text: string;
-}) {
-  return (
-    <div>
-      <h3 className="font-semibold">{title}</h3>
-      <p className="mt-3 text-sm text-neutral-500">
-        {text}
-      </p>
-    </div>
   );
 }

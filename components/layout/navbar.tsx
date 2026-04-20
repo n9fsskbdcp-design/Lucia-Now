@@ -27,6 +27,8 @@ export default async function Navbar() {
         ? "/admin"
         : "/account";
 
+  const primaryLabel = role === "vendor" ? "Browse Experiences" : "Book Now";
+
   return (
     <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
       <div className="mx-auto max-w-7xl px-6 py-4">
@@ -40,13 +42,13 @@ export default async function Navbar() {
 
             {!user && (
               <>
-                <Link href="/vendor/experiences">Become a Partner</Link>
+                <Link href="/partners">Become a Partner</Link>
                 <Link href="/auth/login">Login</Link>
                 <Link
                   href="/experiences"
                   className="rounded-xl bg-black px-5 py-3 text-white"
                 >
-                  Browse Experiences
+                  {primaryLabel}
                 </Link>
               </>
             )}
@@ -60,7 +62,7 @@ export default async function Navbar() {
                   href="/experiences"
                   className="rounded-xl bg-black px-5 py-3 text-white"
                 >
-                  Browse Experiences
+                  {primaryLabel}
                 </Link>
               </>
             )}
@@ -78,7 +80,7 @@ export default async function Navbar() {
           {!user && (
             <>
               <Link
-                href="/vendor/experiences"
+                href="/partners"
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Partner
@@ -88,6 +90,12 @@ export default async function Navbar() {
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Login
+              </Link>
+              <Link
+                href="/experiences"
+                className="rounded-full bg-black px-4 py-2 text-white"
+              >
+                {primaryLabel}
               </Link>
             </>
           )}
@@ -111,6 +119,12 @@ export default async function Navbar() {
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Logout
+              </Link>
+              <Link
+                href="/experiences"
+                className="rounded-full bg-black px-4 py-2 text-white"
+              >
+                {primaryLabel}
               </Link>
             </>
           )}

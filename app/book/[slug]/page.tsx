@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import BookingRequestForm from "@/components/booking/request-form";
 
 export default async function BookPage(
   props: {
@@ -29,8 +30,7 @@ export default async function BookPage(
         </h1>
 
         <p className="mt-5 text-lg text-neutral-600">
-          Booking flow is being finalised.
-          Submit interest now and secure your spot.
+          Submit your request and the vendor can follow up with details and availability.
         </p>
 
         <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
@@ -42,16 +42,17 @@ export default async function BookPage(
             ${item.base_price}
           </p>
 
-          <button className="mt-8 w-full rounded-xl bg-black py-4 text-white">
-            Request Reservation
-          </button>
+          <BookingRequestForm
+            experienceId={item.id}
+            slug={item.slug}
+          />
         </div>
 
         <Link
-          href="/experiences"
+          href={`/experiences/${item.slug}`}
           className="mt-8 inline-block text-sm"
         >
-          ← Back to experiences
+          ← Back to experience
         </Link>
       </section>
     </main>
