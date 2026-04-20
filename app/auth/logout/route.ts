@@ -6,9 +6,7 @@ async function handleLogout(request: Request) {
 
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(
-    new URL("/", request.url)
-  );
+  return NextResponse.redirect(new URL("/", request.url));
 }
 
 export async function GET(request: Request) {

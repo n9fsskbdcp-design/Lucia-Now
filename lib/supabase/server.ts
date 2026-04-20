@@ -12,11 +12,17 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // No-op in Server Components.
-          // Cookie writes must happen in middleware, route handlers, or server actions.
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // In Server Components this may throw.
+            // In Route Handlers / Server Actions it will work.
+          }
         },
       },
-    },
+    }
   );
 }
