@@ -57,6 +57,7 @@ export default async function Navbar() {
               <>
                 <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/account">Account</Link>
+                {role === "admin" ? <Link href="/admin/applications">Applications</Link> : null}
                 <Link href="/auth/logout">Logout</Link>
                 <Link
                   href="/experiences"
@@ -114,6 +115,14 @@ export default async function Navbar() {
               >
                 Account
               </Link>
+              {role === "admin" ? (
+                <Link
+                  href="/admin/applications"
+                  className="rounded-full bg-neutral-100 px-4 py-2"
+                >
+                  Applications
+                </Link>
+              ) : null}
               <Link
                 href="/auth/logout"
                 className="rounded-full bg-neutral-100 px-4 py-2"
