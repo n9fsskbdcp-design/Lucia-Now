@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import BookingRequestForm from "@/components/booking/request-form";
 
 type SlotRow = {
   id: string;
-  start_at: string;
-  end_at: string;
+  starts_at: string;
+  ends_at: string;
   spots_remaining: number;
 };
 
@@ -27,12 +28,30 @@ export default async function BookPage(
 
   if (!item) notFound();
 
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let profile: { full_name?: string | null } | null = null;
+
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    profile = data;
+  }
+
   let selectedSlot: SlotRow | null = null;
 
   if (slot) {
     const { data } = await supabaseAdmin
       .from("availability_slots")
-      .select("id, start_at, end_at, spots_remaining")
+      .select("id, starts_at, ends_at, spots_remaining")
       .eq("id", slot)
       .eq("experience_id", item.id)
       .single();
@@ -60,7 +79,7 @@ export default async function BookPage(
             <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
               <p className="text-sm text-neutral-500">Selected slot</p>
               <p className="mt-2 font-medium">
-                {new Date(selectedSlot.start_at).toLocaleString()}
+                {new Date(selectedSlot.starts_at).toLocaleString()}
               </p>
               <p className="mt-1 text-sm text-neutral-500">
                 Spots left: {selectedSlot.spots_remaining}
@@ -71,6 +90,9 @@ export default async function BookPage(
           <BookingRequestForm
             experienceId={item.id}
             slug={item.slug}
+            slotId={selectedSlot?.id || null}
+            defaultName={profile?.full_name || ""}
+            defaultEmail={user?.email || ""}
           />
         </div>
 

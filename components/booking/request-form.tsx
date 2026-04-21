@@ -7,14 +7,20 @@ import { toast } from "sonner";
 export default function BookingRequestForm({
   experienceId,
   slug,
+  slotId,
+  defaultName = "",
+  defaultEmail = "",
 }: {
   experienceId: string;
   slug: string;
+  slotId?: string | null;
+  defaultName?: string;
+  defaultEmail?: string;
 }) {
   const router = useRouter();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(defaultName);
+  const [email, setEmail] = useState(defaultEmail);
   const [guests, setGuests] = useState(2);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,6 +36,7 @@ export default function BookingRequestForm({
       },
       body: JSON.stringify({
         experience_id: experienceId,
+        slot_id: slotId || null,
         name,
         email,
         guests,
@@ -45,7 +52,7 @@ export default function BookingRequestForm({
       return;
     }
 
-    toast.success("Request sent");
+    toast.success("Booking request sent");
     router.push(`/book/${slug}/success`);
   }
 

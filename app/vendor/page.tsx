@@ -41,26 +41,34 @@ export default async function VendorPage() {
 
   const experienceIds = (experiences ?? []).map((e) => e.id);
 
-  const { data: bookingRequests } = await supabaseAdmin
+  const { data: requests } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, status, experience_id")
+    .select(
+      `
+      *,
+      experiences (
+        title,
+        slug
+      )
+    `,
+    )
+    .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: false });
-
-  const requests = (bookingRequests ?? []).filter((r) =>
-    experienceIds.includes(r.experience_id),
-  );
 
   const { data: slots } = await supabaseAdmin
     .from("availability_slots")
     .select("id, experience_id, status, starts_at")
-    .in("experience_id", experienceIds.length ? experienceIds : ["00000000-0000-0000-0000-000000000000"]);
+    .in(
+      "experience_id",
+      experienceIds.length ? experienceIds : ["00000000-0000-0000-0000-000000000000"],
+    );
 
   const liveCount = (experiences ?? []).filter(
     (e) => e.status === "published" && e.is_active,
   ).length;
 
-  const newLeadsCount = requests.filter((r) => r.status === "new").length;
   const openSlotsCount = (slots ?? []).filter((s) => s.status === "open").length;
+  const newLeadsCount = (requests ?? []).filter((r) => r.status === "new").length;
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -72,7 +80,7 @@ export default async function VendorPage() {
 
         <div className="mt-10 grid gap-4 md:grid-cols-4">
           <MetricCard label="Live Experiences" value={String(liveCount)} />
-          <MetricCard label="Booking Leads" value={String(requests.length)} />
+          <MetricCard label="Booking Leads" value={String(requests?.length || 0)} />
           <MetricCard label="New Leads" value={String(newLeadsCount)} />
           <MetricCard label="Open Slots" value={String(openSlotsCount)} />
         </div>
@@ -81,7 +89,7 @@ export default async function VendorPage() {
           <div className="rounded-3xl bg-white p-8 shadow-sm">
             <h2 className="text-xl font-semibold">Manage Listings</h2>
             <p className="mt-3 text-neutral-600">
-              Update pricing, images, descriptions and availability messaging.
+              Update pricing, images, descriptions and availability.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -103,10 +111,6 @@ export default async function VendorPage() {
 
           <div className="rounded-3xl bg-white p-8 shadow-sm">
             <h2 className="text-xl font-semibold">Verification Status</h2>
-            <p className="mt-3 text-neutral-600">
-              This vendor account status controls public trust badges.
-            </p>
-
             <div className="mt-6 space-y-2 text-sm text-neutral-700">
               <p>
                 <strong>Business:</strong> {vendor.business_name}
@@ -125,22 +129,54 @@ export default async function VendorPage() {
         </div>
 
         <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold">What availability affects</h2>
+          <h2 className="text-2xl font-semibold">Recent booking leads</h2>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <InfoCard
-              title="Experience cards"
-              text="Cards can show slot counts and next available time."
-            />
-            <InfoCard
-              title="Experience page"
-              text="Guests can click real upcoming times from the listing page."
-            />
-            <InfoCard
-              title="Booking flow"
-              text="Booking requests can reduce remaining spots for a slot."
-            />
-          </div>
+          {!requests || requests.length === 0 ? (
+            <p className="mt-6 text-neutral-500">No leads yet.</p>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {requests.slice(0, 8).map((request) => (
+                <div
+                  key={request.id}
+                  className="rounded-2xl bg-neutral-50 p-5"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        {request.experiences?.title || "Experience"}
+                      </h3>
+
+                      <p className="mt-2 text-sm text-neutral-500">
+                        {request.guest_name} · {request.guest_email}
+                      </p>
+
+                      <p className="mt-1 text-sm text-neutral-500">
+                        Guests: {request.guests}
+                      </p>
+
+                      {request.requested_start_at ? (
+                        <p className="mt-1 text-sm text-neutral-500">
+                          Requested slot:{" "}
+                          {new Date(request.requested_start_at).toLocaleString()}
+                        </p>
+                      ) : null}
+
+                      {request.notes ? (
+                        <p className="mt-3 text-sm text-neutral-700">
+                          {request.notes}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-2">
+                      <StatusBadge label={request.status} />
+                      <StatusBadge label={request.contact_status} subtle />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>
@@ -162,17 +198,26 @@ function MetricCard({
   );
 }
 
-function InfoCard({
-  title,
-  text,
+function StatusBadge({
+  label,
+  subtle = false,
 }: {
-  title: string;
-  text: string;
+  label: string;
+  subtle?: boolean;
 }) {
+  const base = subtle
+    ? "bg-neutral-100 text-neutral-700"
+    : label === "new"
+      ? "bg-blue-100 text-blue-800"
+      : label === "confirmed"
+        ? "bg-green-100 text-green-800"
+        : label === "declined"
+          ? "bg-red-100 text-red-800"
+          : "bg-neutral-100 text-neutral-700";
+
   return (
-    <div className="rounded-2xl bg-neutral-50 p-5">
-      <h3 className="font-medium">{title}</h3>
-      <p className="mt-2 text-sm text-neutral-600">{text}</p>
+    <div className={`rounded-full px-3 py-1 text-xs font-medium ${base}`}>
+      {label}
     </div>
   );
 }
