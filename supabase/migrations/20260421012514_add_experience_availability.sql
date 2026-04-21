@@ -17,56 +17,10 @@ alter table public.availability_slots
 add column if not exists status text default 'open';
 
 alter table public.availability_slots
-add column if not exists created_at timestamptz not null default now();
+add column if not exists created_at timestamptz default now();
 
 alter table public.availability_slots
-add column if not exists updated_at timestamptz not null default now();
-
-update public.availability_slots
-set
-  capacity = coalesce(capacity, 1),
-  spots_remaining = coalesce(spots_remaining, 1),
-  status = coalesce(status, 'open'),
-  created_at = coalesce(created_at, now()),
-  updated_at = coalesce(updated_at, now())
-where
-  capacity is null
-  or spots_remaining is null
-  or status is null
-  or created_at is null
-  or updated_at is null;
-
-alter table public.availability_slots
-alter column experience_id set not null;
-
-alter table public.availability_slots
-alter column start_at set not null;
-
-alter table public.availability_slots
-alter column end_at set not null;
-
-alter table public.availability_slots
-alter column capacity set not null;
-
-alter table public.availability_slots
-alter column spots_remaining set not null;
-
-alter table public.availability_slots
-alter column status set not null;
-
-alter table public.availability_slots
-drop constraint if exists availability_slots_time_check;
-
-alter table public.availability_slots
-add constraint availability_slots_time_check
-check (end_at > start_at);
-
-alter table public.availability_slots
-drop constraint if exists availability_slots_spots_check;
-
-alter table public.availability_slots
-add constraint availability_slots_spots_check
-check (spots_remaining >= 0 and spots_remaining <= capacity);
+add column if not exists updated_at timestamptz default now();
 
 create index if not exists idx_availability_slots_experience_id
 on public.availability_slots (experience_id);
