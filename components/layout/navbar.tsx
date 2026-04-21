@@ -20,5 +20,5 @@ export default async function Navbar() {
     role = profile?.role || "tourist";
   }
 
-  return <NavbarClient initialUser={!!user} role={role} />;
+  return <NavbarClient initialUser={!!user} initialRole={role} />;
 }

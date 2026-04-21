@@ -1,32 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
+import LogoutButton from "./logout-button";
+
+type Role = "guest" | "tourist" | "vendor" | "admin";
 
 export default function NavbarClient({
   initialUser,
-  role: initialRole,
+  initialRole,
 }: {
   initialUser: boolean;
-  role: string;
+  initialRole: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
 
   const [hasUser, setHasUser] = useState(initialUser);
-  const [role, setRole] = useState(initialRole);
+  const [role, setRole] = useState<Role>((initialRole as Role) || "guest");
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
     async function syncSession() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!mounted) return;
+      if (!active) return;
 
       setHasUser(!!user);
 
@@ -41,30 +44,29 @@ export default function NavbarClient({
         .eq("id", user.id)
         .single();
 
-      setRole(profile?.role || "tourist");
+      setRole((profile?.role as Role) || "tourist");
     }
 
     syncSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async () => {
-      await syncSession();
+    } = supabase.auth.onAuthStateChange(() => {
+      syncSession();
       router.refresh();
     });
 
     return () => {
-      mounted = false;
+      active = false;
       subscription.unsubscribe();
     };
   }, [router, supabase]);
 
-  const dashboardHref =
-    role === "vendor"
-      ? "/vendor"
-      : role === "admin"
-        ? "/admin"
-        : "/account";
+  const dashboardHref = useMemo(() => {
+    if (role === "vendor") return "/vendor";
+    if (role === "admin") return "/admin";
+    return "/account";
+  }, [role]);
 
   const primaryLabel = role === "vendor" ? "Browse Experiences" : "Book Now";
 
@@ -99,7 +101,7 @@ export default function NavbarClient({
                 {role === "admin" ? (
                   <Link href="/admin/applications">Applications</Link>
                 ) : null}
-                <Link href="/auth/logout">Logout</Link>
+                <LogoutButton />
                 <Link
                   href="/experiences"
                   className="rounded-xl bg-black px-5 py-3 text-white"
@@ -164,12 +166,9 @@ export default function NavbarClient({
                   Applications
                 </Link>
               ) : null}
-              <Link
-                href="/auth/logout"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
-                Logout
-              </Link>
+              <span className="rounded-full bg-neutral-100 px-4 py-2">
+                <LogoutButton />
+              </span>
               <Link
                 href="/experiences"
                 className="rounded-full bg-black px-4 py-2 text-white"
