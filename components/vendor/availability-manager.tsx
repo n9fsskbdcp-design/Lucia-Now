@@ -35,7 +35,7 @@ export default function AvailabilityManager({
 }) {
   const [startsAt, setStartsAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(180);
-  const [capacity, setCapacity] = useState(6);
+  const [capacityTotal, setCapacityTotal] = useState(6);
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -67,13 +67,13 @@ export default function AvailabilityManager({
         ? {
             starts_at: startsAt,
             duration_minutes: durationMinutes,
-            capacity_total: capacity,
+            capacity_total: capacityTotal,
             weeks: repeatWeeks,
           }
         : {
             starts_at: startsAt,
             ends_at: endsAt,
-            capacity: capacity,
+            capacity_total: capacityTotal,
           };
 
     const res = await fetch(endpoint, {
@@ -111,7 +111,7 @@ export default function AvailabilityManager({
       body: JSON.stringify({
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
-        capacity: slot.capacity_total,
+        capacity_total: slot.capacity_total,
       }),
     });
 
@@ -221,8 +221,8 @@ export default function AvailabilityManager({
             <input
               type="number"
               min={1}
-              value={capacity}
-              onChange={(e) => setCapacity(Number(e.target.value))}
+              value={capacityTotal}
+              onChange={(e) => setCapacityTotal(Number(e.target.value))}
               className="w-full rounded-xl border px-4 py-3"
               required
             />

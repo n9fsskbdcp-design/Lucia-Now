@@ -46,15 +46,9 @@ export default async function AccountPage() {
             <h2 className="text-lg font-semibold">Profile</h2>
 
             <div className="mt-5 space-y-3 text-sm text-neutral-600">
-              <p>
-                <strong>Email:</strong> {user.email}
-              </p>
-              <p>
-                <strong>Name:</strong> {profile?.full_name || "—"}
-              </p>
-              <p>
-                <strong>Role:</strong> {profile?.role || "tourist"}
-              </p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Name:</strong> {profile?.full_name || "—"}</p>
+              <p><strong>Role:</strong> {profile?.role || "tourist"}</p>
             </div>
           </div>
 

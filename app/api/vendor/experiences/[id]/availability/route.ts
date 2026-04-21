@@ -66,18 +66,18 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { starts_at, ends_at, capacity } = body;
+    const { starts_at, ends_at, capacity_total } = body;
 
-    if (!starts_at || !ends_at || !capacity) {
+    if (!starts_at || !ends_at || !capacity_total) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    const cap = Number(capacity);
+    const capacity = Number(capacity_total);
 
-    if (Number.isNaN(cap) || cap < 1) {
+    if (Number.isNaN(capacity) || capacity < 1) {
       return NextResponse.json(
         { error: "Capacity must be at least 1" },
         { status: 400 },
@@ -90,14 +90,14 @@ export async function POST(
         experience_id: id,
         starts_at,
         ends_at,
-        capacity_total: cap,
-        spots_remaining: cap,
+        capacity_total: capacity,
+        spots_remaining: capacity,
         status: "open",
       });
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: error },
+        { error: error.message },
         { status: 400 },
       );
     }

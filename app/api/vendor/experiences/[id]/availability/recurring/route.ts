@@ -90,13 +90,6 @@ export async function POST(
       );
     }
 
-    if (duration < 1 || capacity < 1 || repeatWeeks < 1) {
-      return NextResponse.json(
-        { error: "Invalid values" },
-        { status: 400 },
-      );
-    }
-
     const baseStart = new Date(starts_at);
 
     const rows = Array.from({ length: repeatWeeks }).map((_, index) => {
