@@ -22,12 +22,13 @@ export default async function Navbar() {
 
   const dashboardHref =
     role === "vendor"
-      ? "/vendor/experiences"
+      ? "/vendor"
       : role === "admin"
         ? "/admin"
         : "/account";
 
-  const primaryLabel = role === "vendor" ? "Browse Experiences" : "Book Now";
+  const primaryLabel =
+    role === "vendor" ? "Browse Experiences" : "Book Now";
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
@@ -57,7 +58,9 @@ export default async function Navbar() {
               <>
                 <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/account">Account</Link>
-                {role === "admin" ? <Link href="/admin/applications">Applications</Link> : null}
+                {role === "admin" ? (
+                  <Link href="/admin/applications">Applications</Link>
+                ) : null}
                 <Link href="/auth/logout">Logout</Link>
                 <Link
                   href="/experiences"

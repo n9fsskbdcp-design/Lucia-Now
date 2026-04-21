@@ -27,6 +27,10 @@ type ImageRow = {
   is_cover: boolean | null;
 };
 
+type SlotCountRow = {
+  experience_id: string;
+};
+
 export default async function ExperiencesPage({
   searchParams,
 }: {
@@ -54,7 +58,7 @@ export default async function ExperiencesPage({
         is_verified,
         verification_status
       )
-    `
+    `,
     )
     .eq("status", "published")
     .eq("is_active", true)
@@ -76,6 +80,15 @@ export default async function ExperiencesPage({
 
   const images: ImageRow[] = (imageData ?? []) as ImageRow[];
 
+  const { data: slotData } = await supabaseAdmin
+    .from("availability_slots")
+    .select("experience_id")
+    .in("experience_id", ids)
+    .eq("status", "open")
+    .gte("start_at", new Date().toISOString());
+
+  const slots = (slotData ?? []) as SlotCountRow[];
+
   function cover(id: string) {
     const coverImage =
       images.find((img) => img.experience_id === id && img.is_cover === true) ||
@@ -93,6 +106,10 @@ export default async function ExperiencesPage({
 
   function vendorOf(item: ExperienceRow) {
     return item.vendors?.[0] ?? null;
+  }
+
+  function hasUpcomingAvailability(id: string) {
+    return slots.some((slot) => slot.experience_id === id);
   }
 
   return (
@@ -160,6 +177,7 @@ export default async function ExperiencesPage({
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => {
             const vendor = vendorOf(item);
+            const available = hasUpcomingAvailability(item.id);
 
             return (
               <Link
@@ -184,6 +202,12 @@ export default async function ExperiencesPage({
                     <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
                       {bookingBadge(item)}
                     </span>
+
+                    {available ? (
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                        Slots Available
+                      </span>
+                    ) : null}
                   </div>
 
                   <h2 className="mt-4 text-xl font-semibold">{item.title}</h2>

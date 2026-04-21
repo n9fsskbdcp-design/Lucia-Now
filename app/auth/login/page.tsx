@@ -1,8 +1,34 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role === "vendor") {
+      redirect("/vendor");
+    }
+
+    if (profile?.role === "admin") {
+      redirect("/admin");
+    }
+
+    redirect("/account");
+  }
+
   return (
     <main className="mx-auto max-w-md px-6 py-20">
       <h1 className="text-4xl font-semibold">Login</h1>
@@ -23,7 +49,7 @@ export default function LoginPage() {
 
       <p className="mt-2 text-sm text-neutral-600">
         Want to list tours or transport?{" "}
-        <Link href="/auth/signup?role=vendor" className="font-medium underline">
+        <Link href="/partners" className="font-medium underline">
           Become a partner
         </Link>
       </p>
