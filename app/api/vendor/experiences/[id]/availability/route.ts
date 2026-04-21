@@ -66,9 +66,9 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { start_at, end_at, capacity } = body;
+    const { starts_at, ends_at, capacity } = body;
 
-    if (!start_at || !end_at || !capacity) {
+    if (!starts_at || !ends_at || !capacity) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -88,8 +88,8 @@ export async function POST(
       .from("availability_slots")
       .insert({
         experience_id: id,
-        start_at,
-        end_at,
+        starts_at,
+        ends_at,
         capacity: cap,
         spots_remaining: cap,
         status: "open",
@@ -111,4 +111,83 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const actor = await getActor();
+
+  if (!actor) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const allowed = await canManageExperience(actor.user.id, actor.role, id);
+
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await request.json();
+  const { slot_id, status, spots_remaining } = body;
+
+  if (!slot_id) {
+    return NextResponse.json({ error: "Missing slot_id" }, { status: 400 });
+  }
+
+  const payload: Record<string, unknown> = {};
+
+  if (status) payload.status = status;
+  if (typeof spots_remaining === "number") payload.spots_remaining = spots_remaining;
+
+  const { error } = await supabaseAdmin
+    .from("availability_slots")
+    .update(payload)
+    .eq("id", slot_id)
+    .eq("experience_id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const actor = await getActor();
+
+  if (!actor) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const allowed = await canManageExperience(actor.user.id, actor.role, id);
+
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const slotId = searchParams.get("slot_id");
+
+  if (!slotId) {
+    return NextResponse.json({ error: "Missing slot_id" }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from("availability_slots")
+    .delete()
+    .eq("id", slotId)
+    .eq("experience_id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true });
 }

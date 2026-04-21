@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 type Slot = {
   id: string;
-  start_at: string;
-  end_at: string;
+  starts_at: string;
+  ends_at: string;
   capacity: number;
   spots_remaining: number;
   status: string;
@@ -33,23 +33,23 @@ export default function AvailabilityManager({
   experienceId: string;
   slots: Slot[];
 }) {
-  const [startAt, setStartAt] = useState("");
+  const [startsAt, setStartsAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(180);
   const [capacity, setCapacity] = useState(6);
   const [loading, setLoading] = useState(false);
 
-  const endAt = useMemo(() => {
-    if (!startAt) return "";
-    const start = new Date(startAt);
+  const endsAt = useMemo(() => {
+    if (!startsAt) return "";
+    const start = new Date(startsAt);
     const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
     return formatDateTimeLocal(end);
-  }, [startAt, durationMinutes]);
+  }, [startsAt, durationMinutes]);
 
   function quickSet(daysAhead: number, hour: number) {
     const date = new Date();
     date.setDate(date.getDate() + daysAhead);
     date.setHours(hour, 0, 0, 0);
-    setStartAt(formatDateTimeLocal(date));
+    setStartsAt(formatDateTimeLocal(date));
   }
 
   async function createSlot(e: React.FormEvent) {
@@ -62,8 +62,8 @@ export default function AvailabilityManager({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        start_at: startAt,
-        end_at: endAt,
+        starts_at: startsAt,
+        ends_at: endsAt,
         capacity,
       }),
     });
@@ -81,8 +81,8 @@ export default function AvailabilityManager({
   }
 
   async function duplicateSlot(slot: Slot) {
-    const start = new Date(slot.start_at);
-    const end = new Date(slot.end_at);
+    const start = new Date(slot.starts_at);
+    const end = new Date(slot.ends_at);
 
     start.setDate(start.getDate() + 1);
     end.setDate(end.getDate() + 1);
@@ -93,8 +93,8 @@ export default function AvailabilityManager({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        start_at: start.toISOString(),
-        end_at: end.toISOString(),
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
         capacity: slot.capacity,
       }),
     });
@@ -180,8 +180,8 @@ export default function AvailabilityManager({
             </label>
             <input
               type="datetime-local"
-              value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
               className="w-full rounded-xl border px-4 py-3"
               required
             />
@@ -220,7 +220,7 @@ export default function AvailabilityManager({
 
           <div className="md:col-span-3 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
             <p>
-              <strong>Ends at:</strong> {endAt ? new Date(endAt).toLocaleString() : "—"}
+              <strong>Ends at:</strong> {endsAt ? new Date(endsAt).toLocaleString() : "—"}
             </p>
           </div>
 
@@ -247,10 +247,10 @@ export default function AvailabilityManager({
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="text-lg font-medium">
-                      {new Date(slot.start_at).toLocaleString()}
+                      {new Date(slot.starts_at).toLocaleString()}
                     </p>
                     <p className="mt-1 text-sm text-neutral-500">
-                      Ends {new Date(slot.end_at).toLocaleString()}
+                      Ends {new Date(slot.ends_at).toLocaleString()}
                     </p>
                     <p className="mt-3 text-sm text-neutral-700">
                       Capacity {slot.capacity} · {slot.spots_remaining} spots remaining

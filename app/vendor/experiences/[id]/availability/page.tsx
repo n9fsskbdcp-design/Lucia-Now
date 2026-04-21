@@ -57,7 +57,7 @@ export default async function VendorAvailabilityPage(
     .from("availability_slots")
     .select("*")
     .eq("experience_id", id)
-    .order("start_at", { ascending: true });
+    .order("starts_at", { ascending: true });
 
   return (
     <main className="min-h-screen bg-neutral-50">
@@ -80,8 +80,8 @@ export default async function VendorAvailabilityPage(
           experienceId={id}
           slots={(slots ?? []) as {
             id: string;
-            start_at: string;
-            end_at: string;
+            starts_at: string;
+            ends_at: string;
             capacity: number;
             spots_remaining: number;
             status: string;
