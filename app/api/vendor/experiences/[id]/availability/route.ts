@@ -90,7 +90,7 @@ export async function POST(
         experience_id: id,
         starts_at,
         ends_at,
-        capacity: cap,
+        capacity_total: cap,
         spots_remaining: cap,
         status: "open",
       });

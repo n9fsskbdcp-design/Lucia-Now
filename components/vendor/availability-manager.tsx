@@ -7,7 +7,7 @@ type Slot = {
   id: string;
   starts_at: string;
   ends_at: string;
-  capacity: number;
+  capacity_total: number;
   spots_remaining: number;
   status: string;
 };
@@ -95,7 +95,7 @@ export default function AvailabilityManager({
       body: JSON.stringify({
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
-        capacity: slot.capacity,
+        capacity: slot.capacity_total,
       }),
     });
 
@@ -253,7 +253,7 @@ export default function AvailabilityManager({
                       Ends {new Date(slot.ends_at).toLocaleString()}
                     </p>
                     <p className="mt-3 text-sm text-neutral-700">
-                      Capacity {slot.capacity} · {slot.spots_remaining} spots remaining
+                      Capacity {slot.capacity_total} · {slot.spots_remaining} spots remaining
                     </p>
                   </div>
 

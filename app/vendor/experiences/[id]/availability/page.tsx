@@ -82,7 +82,7 @@ export default async function VendorAvailabilityPage(
             id: string;
             starts_at: string;
             ends_at: string;
-            capacity: number;
+            capacity_total: number;
             spots_remaining: number;
             status: string;
           }[]}
