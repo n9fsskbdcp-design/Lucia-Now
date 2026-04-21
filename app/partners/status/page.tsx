@@ -21,6 +21,12 @@ export default async function PartnerStatusPage() {
 
   const latest = applications?.[0] ?? null;
 
+  const { data: vendor } = await supabaseAdmin
+    .from("vendors")
+    .select("*")
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
   return (
     <main className="min-h-screen bg-neutral-50">
       <section className="mx-auto max-w-4xl px-6 py-20">
@@ -32,7 +38,29 @@ export default async function PartnerStatusPage() {
           Your partner application
         </h1>
 
-        {!latest ? (
+        {vendor ? (
+          <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
+            <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800">
+              Vendor account active
+            </span>
+
+            <h2 className="mt-6 text-2xl font-semibold">
+              {vendor.business_name}
+            </h2>
+
+            <div className="mt-6 space-y-2 text-neutral-700">
+              <p>
+                <strong>Verification status:</strong> {vendor.verification_status}
+              </p>
+              <p>
+                <strong>Verified badge:</strong> {vendor.is_verified ? "On" : "Off"}
+              </p>
+              <p>
+                <strong>Vendor live:</strong> {vendor.is_live ? "Yes" : "No"}
+              </p>
+            </div>
+          </div>
+        ) : !latest ? (
           <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
             <p className="text-neutral-600">
               You have not submitted a partner application yet.
@@ -63,37 +91,6 @@ export default async function PartnerStatusPage() {
               <InfoCard label="Website" value={latest.website || "—"} />
               <InfoCard label="Instagram" value={latest.instagram || "—"} />
             </div>
-
-            {latest.experience_types?.length ? (
-              <div className="mt-8">
-                <p className="mb-3 text-sm font-medium text-neutral-700">
-                  Experience types
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {latest.experience_types.map((type: string) => (
-                    <span
-                      key={type}
-                      className="rounded-full bg-neutral-100 px-3 py-1 text-sm"
-                    >
-                      {type}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {latest.notes ? (
-              <div className="mt-8">
-                <p className="mb-3 text-sm font-medium text-neutral-700">
-                  Notes
-                </p>
-
-                <p className="rounded-2xl bg-neutral-50 p-4 text-neutral-700">
-                  {latest.notes}
-                </p>
-              </div>
-            ) : null}
           </div>
         )}
       </section>

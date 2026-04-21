@@ -27,8 +27,13 @@ type ImageRow = {
   is_cover: boolean | null;
 };
 
-type SlotCountRow = {
+type SlotRow = {
+  id: string;
   experience_id: string;
+  starts_at: string;
+  ends_at: string;
+  spots_remaining: number;
+  status: string;
 };
 
 export default async function ExperiencesPage({
@@ -82,12 +87,13 @@ export default async function ExperiencesPage({
 
   const { data: slotData } = await supabaseAdmin
     .from("availability_slots")
-    .select("experience_id")
+    .select("id, experience_id, starts_at, ends_at, spots_remaining, status")
     .in("experience_id", ids)
     .eq("status", "open")
-    .gte("start_at", new Date().toISOString());
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
 
-  const slots = (slotData ?? []) as SlotCountRow[];
+  const slots: SlotRow[] = (slotData ?? []) as SlotRow[];
 
   function cover(id: string) {
     const coverImage =
@@ -108,8 +114,14 @@ export default async function ExperiencesPage({
     return item.vendors?.[0] ?? null;
   }
 
-  function hasUpcomingAvailability(id: string) {
-    return slots.some((slot) => slot.experience_id === id);
+  function slotsForExperience(id: string) {
+    return slots.filter((slot) => slot.experience_id === id);
+  }
+
+  function nextSlotLabel(id: string) {
+    const next = slotsForExperience(id)[0];
+    if (!next) return null;
+    return new Date(next.starts_at).toLocaleString();
   }
 
   return (
@@ -143,31 +155,16 @@ export default async function ExperiencesPage({
         </form>
 
         <div className="mt-5 flex flex-wrap gap-3 text-sm">
-          <Link
-            href="/experiences?q=boat"
-            className="rounded-full bg-white px-4 py-2 shadow-sm"
-          >
+          <Link href="/experiences?q=boat" className="rounded-full bg-white px-4 py-2 shadow-sm">
             Boat Trips
           </Link>
-
-          <Link
-            href="/experiences?q=driver"
-            className="rounded-full bg-white px-4 py-2 shadow-sm"
-          >
+          <Link href="/experiences?q=driver" className="rounded-full bg-white px-4 py-2 shadow-sm">
             Drivers
           </Link>
-
-          <Link
-            href="/experiences?q=tour"
-            className="rounded-full bg-white px-4 py-2 shadow-sm"
-          >
+          <Link href="/experiences?q=tour" className="rounded-full bg-white px-4 py-2 shadow-sm">
             Island Tours
           </Link>
-
-          <Link
-            href="/experiences?q=sunset"
-            className="rounded-full bg-white px-4 py-2 shadow-sm"
-          >
+          <Link href="/experiences?q=sunset" className="rounded-full bg-white px-4 py-2 shadow-sm">
             Sunset
           </Link>
         </div>
@@ -177,7 +174,8 @@ export default async function ExperiencesPage({
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => {
             const vendor = vendorOf(item);
-            const available = hasUpcomingAvailability(item.id);
+            const itemSlots = slotsForExperience(item.id);
+            const nextSlot = nextSlotLabel(item.id);
 
             return (
               <Link
@@ -203,9 +201,9 @@ export default async function ExperiencesPage({
                       {bookingBadge(item)}
                     </span>
 
-                    {available ? (
+                    {itemSlots.length > 0 ? (
                       <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                        Slots Available
+                        {itemSlots.length} slot{itemSlots.length > 1 ? "s" : ""} available
                       </span>
                     ) : null}
                   </div>
@@ -219,6 +217,13 @@ export default async function ExperiencesPage({
                   <p className="mt-3 line-clamp-2 text-sm text-neutral-500">
                     {item.short_description}
                   </p>
+
+                  {nextSlot ? (
+                    <div className="mt-4 rounded-2xl bg-neutral-50 p-3 text-sm text-neutral-700">
+                      <p className="font-medium">Next available</p>
+                      <p className="mt-1 text-neutral-500">{nextSlot}</p>
+                    </div>
+                  ) : null}
 
                   <div className="mt-6 flex items-end justify-between">
                     <div>
