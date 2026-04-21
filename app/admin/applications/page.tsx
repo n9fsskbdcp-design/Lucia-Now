@@ -41,11 +41,14 @@ export default async function AdminApplicationsPage() {
                 key={app.id}
                 className="rounded-2xl bg-white p-6 shadow-sm"
               >
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold">{app.business_name}</h2>
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-xl font-semibold">{app.business_name}</h2>
+                      <StatusBadge status={app.status} />
+                    </div>
 
-                    <p className="mt-2 text-sm text-neutral-500">
+                    <p className="mt-3 text-sm text-neutral-500">
                       {app.full_name} · {app.email}
                     </p>
 
@@ -62,7 +65,7 @@ export default async function AdminApplicationsPage() {
                     ) : null}
 
                     {app.experience_types?.length ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-4 flex flex-wrap gap-2">
                         {app.experience_types.map((type: string) => (
                           <span
                             key={type}
@@ -75,21 +78,39 @@ export default async function AdminApplicationsPage() {
                     ) : null}
 
                     {app.notes ? (
-                      <p className="mt-4 text-sm text-neutral-700">{app.notes}</p>
+                      <p className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-700">
+                        {app.notes}
+                      </p>
                     ) : null}
                   </div>
 
-                  <div className="flex flex-col items-start gap-3">
-                    <span className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
-                      {app.status}
-                    </span>
+                  <div className="flex w-full flex-col gap-3 lg:w-64">
+                    <form
+                      action={`/api/admin/applications/${app.id}/status`}
+                      method="post"
+                    >
+                      <input type="hidden" name="status" value="reviewing" />
+                      <button className="w-full rounded-xl border px-4 py-3">
+                        Mark Reviewing
+                      </button>
+                    </form>
+
+                    <form
+                      action={`/api/admin/applications/${app.id}/status`}
+                      method="post"
+                    >
+                      <input type="hidden" name="status" value="rejected" />
+                      <button className="w-full rounded-xl border px-4 py-3 text-red-600">
+                        Reject
+                      </button>
+                    </form>
 
                     {app.status !== "approved" ? (
                       <form
                         action={`/api/admin/applications/${app.id}/approve`}
                         method="post"
                       >
-                        <button className="rounded-xl bg-black px-5 py-3 text-white">
+                        <button className="w-full rounded-xl bg-black px-4 py-3 text-white">
                           Approve & Create Vendor
                         </button>
                       </form>
@@ -106,5 +127,20 @@ export default async function AdminApplicationsPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    new: "bg-blue-100 text-blue-800",
+    reviewing: "bg-amber-100 text-amber-800",
+    approved: "bg-green-100 text-green-800",
+    rejected: "bg-red-100 text-red-800",
+  };
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-medium ${styles[status] || "bg-neutral-100 text-neutral-700"}`}>
+      {status}
+    </span>
   );
 }
