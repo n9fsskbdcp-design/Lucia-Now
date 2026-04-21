@@ -40,7 +40,6 @@ export default function AvailabilityManager({
 
   const endAt = useMemo(() => {
     if (!startAt) return "";
-
     const start = new Date(startAt);
     const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
     return formatDateTimeLocal(end);
@@ -81,6 +80,36 @@ export default function AvailabilityManager({
     window.location.reload();
   }
 
+  async function duplicateSlot(slot: Slot) {
+    const start = new Date(slot.start_at);
+    const end = new Date(slot.end_at);
+
+    start.setDate(start.getDate() + 1);
+    end.setDate(end.getDate() + 1);
+
+    const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        start_at: start.toISOString(),
+        end_at: end.toISOString(),
+        capacity: slot.capacity,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error(data.error || "Could not duplicate slot");
+      return;
+    }
+
+    toast.success("Slot duplicated for next day");
+    window.location.reload();
+  }
+
   async function updateSlot(slotId: string, status: string) {
     const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
       method: "PATCH",
@@ -107,9 +136,7 @@ export default function AvailabilityManager({
   async function deleteSlot(slotId: string) {
     const res = await fetch(
       `/api/vendor/experiences/${experienceId}/availability?slot_id=${slotId}`,
-      {
-        method: "DELETE",
-      },
+      { method: "DELETE" },
     );
 
     const data = await res.json();
@@ -128,36 +155,20 @@ export default function AvailabilityManager({
       <section className="rounded-3xl bg-white p-8 shadow-sm">
         <h2 className="text-2xl font-semibold">Add available time</h2>
         <p className="mt-2 text-neutral-600">
-          Create one-off bookable times for this experience.
+          Create a one-off slot now. Later we can add recurring schedules.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => quickSet(0, 10)}
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm"
-          >
+          <button type="button" onClick={() => quickSet(0, 10)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
             Today 10:00
           </button>
-          <button
-            type="button"
-            onClick={() => quickSet(0, 14)}
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm"
-          >
+          <button type="button" onClick={() => quickSet(0, 14)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
             Today 14:00
           </button>
-          <button
-            type="button"
-            onClick={() => quickSet(1, 9)}
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm"
-          >
+          <button type="button" onClick={() => quickSet(1, 9)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
             Tomorrow 09:00
           </button>
-          <button
-            type="button"
-            onClick={() => quickSet(1, 15)}
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm"
-          >
+          <button type="button" onClick={() => quickSet(1, 15)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
             Tomorrow 15:00
           </button>
         </div>
@@ -209,8 +220,7 @@ export default function AvailabilityManager({
 
           <div className="md:col-span-3 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
             <p>
-              <strong>Ends at:</strong>{" "}
-              {endAt ? new Date(endAt).toLocaleString() : "—"}
+              <strong>Ends at:</strong> {endAt ? new Date(endAt).toLocaleString() : "—"}
             </p>
           </div>
 
@@ -233,10 +243,7 @@ export default function AvailabilityManager({
         ) : (
           <div className="mt-6 space-y-4">
             {slots.map((slot) => (
-              <div
-                key={slot.id}
-                className="rounded-2xl border border-neutral-200 p-5"
-              >
+              <div key={slot.id} className="rounded-2xl border border-neutral-200 p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="text-lg font-medium">
@@ -251,6 +258,14 @@ export default function AvailabilityManager({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => duplicateSlot(slot)}
+                      className="rounded-xl border px-4 py-2 text-sm"
+                    >
+                      Duplicate
+                    </button>
+
                     {slot.status !== "open" ? (
                       <button
                         type="button"
