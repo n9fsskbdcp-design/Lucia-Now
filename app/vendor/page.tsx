@@ -85,49 +85,6 @@ export default async function VendorPage() {
           <MetricCard label="Open Slots" value={String(openSlotsCount)} />
         </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Manage Listings</h2>
-            <p className="mt-3 text-neutral-600">
-              Update pricing, images, descriptions and availability.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/vendor/experiences"
-                className="rounded-xl bg-black px-5 py-3 text-white"
-              >
-                Open Dashboard
-              </Link>
-
-              <Link
-                href="/vendor/experiences/new"
-                className="rounded-xl border px-5 py-3"
-              >
-                Add Experience
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Verification Status</h2>
-            <div className="mt-6 space-y-2 text-sm text-neutral-700">
-              <p>
-                <strong>Business:</strong> {vendor.business_name}
-              </p>
-              <p>
-                <strong>Verification:</strong> {vendor.verification_status}
-              </p>
-              <p>
-                <strong>Verified badge:</strong> {vendor.is_verified ? "On" : "Off"}
-              </p>
-              <p>
-                <strong>Live:</strong> {vendor.is_live ? "Yes" : "No"}
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
           <h2 className="text-2xl font-semibold">Recent booking leads</h2>
 
@@ -136,9 +93,10 @@ export default async function VendorPage() {
           ) : (
             <div className="mt-6 space-y-4">
               {requests.slice(0, 8).map((request) => (
-                <div
+                <Link
                   key={request.id}
-                  className="rounded-2xl bg-neutral-50 p-5"
+                  href={`/vendor/leads/${request.id}`}
+                  className="block rounded-2xl bg-neutral-50 p-5 transition hover:bg-neutral-100"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -160,12 +118,6 @@ export default async function VendorPage() {
                           {new Date(request.requested_start_at).toLocaleString()}
                         </p>
                       ) : null}
-
-                      {request.notes ? (
-                        <p className="mt-3 text-sm text-neutral-700">
-                          {request.notes}
-                        </p>
-                      ) : null}
                     </div>
 
                     <div className="space-y-2">
@@ -173,7 +125,7 @@ export default async function VendorPage() {
                       <StatusBadge label={request.contact_status} subtle />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

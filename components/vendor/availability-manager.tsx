@@ -36,6 +36,7 @@ export default function AvailabilityManager({
   const [startsAt, setStartsAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(180);
   const [capacity, setCapacity] = useState(6);
+  const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const endsAt = useMemo(() => {
@@ -56,16 +57,31 @@ export default function AvailabilityManager({
     e.preventDefault();
     setLoading(true);
 
-    const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
+    const endpoint =
+      repeatWeeks > 1
+        ? `/api/vendor/experiences/${experienceId}/availability/recurring`
+        : `/api/vendor/experiences/${experienceId}/availability`;
+
+    const payload =
+      repeatWeeks > 1
+        ? {
+            starts_at: startsAt,
+            duration_minutes: durationMinutes,
+            capacity_total: capacity,
+            weeks: repeatWeeks,
+          }
+        : {
+            starts_at: startsAt,
+            ends_at: endsAt,
+            capacity: capacity,
+          };
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        starts_at: startsAt,
-        ends_at: endsAt,
-        capacity,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -76,16 +92,16 @@ export default function AvailabilityManager({
       return;
     }
 
-    toast.success("Availability slot added");
+    toast.success(repeatWeeks > 1 ? "Weekly slots added" : "Availability slot added");
     window.location.reload();
   }
 
-  async function duplicateSlot(slot: Slot) {
+  async function duplicateSlot(slot: Slot, daysToAdd: number) {
     const start = new Date(slot.starts_at);
     const end = new Date(slot.ends_at);
 
-    start.setDate(start.getDate() + 1);
-    end.setDate(end.getDate() + 1);
+    start.setDate(start.getDate() + daysToAdd);
+    end.setDate(end.getDate() + daysToAdd);
 
     const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
       method: "POST",
@@ -106,7 +122,7 @@ export default function AvailabilityManager({
       return;
     }
 
-    toast.success("Slot duplicated for next day");
+    toast.success(daysToAdd === 7 ? "Slot duplicated to next week" : "Slot duplicated");
     window.location.reload();
   }
 
@@ -155,7 +171,7 @@ export default function AvailabilityManager({
       <section className="rounded-3xl bg-white p-8 shadow-sm">
         <h2 className="text-2xl font-semibold">Add available time</h2>
         <p className="mt-2 text-neutral-600">
-          Create a one-off slot now. Later we can add recurring schedules.
+          Create one-off or recurring weekly slots.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -173,11 +189,9 @@ export default function AvailabilityManager({
           </button>
         </div>
 
-        <form onSubmit={createSlot} className="mt-8 grid gap-5 md:grid-cols-3">
+        <form onSubmit={createSlot} className="mt-8 grid gap-5 md:grid-cols-4">
           <div>
-            <label className="mb-2 block text-sm font-medium">
-              Start date & time
-            </label>
+            <label className="mb-2 block text-sm font-medium">Start date & time</label>
             <input
               type="datetime-local"
               value={startsAt}
@@ -188,9 +202,7 @@ export default function AvailabilityManager({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
-              Duration
-            </label>
+            <label className="mb-2 block text-sm font-medium">Duration</label>
             <select
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(Number(e.target.value))}
@@ -205,9 +217,7 @@ export default function AvailabilityManager({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
-              Spots available
-            </label>
+            <label className="mb-2 block text-sm font-medium">Spots available</label>
             <input
               type="number"
               min={1}
@@ -218,18 +228,29 @@ export default function AvailabilityManager({
             />
           </div>
 
-          <div className="md:col-span-3 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
+          <div>
+            <label className="mb-2 block text-sm font-medium">Repeat weekly</label>
+            <select
+              value={repeatWeeks}
+              onChange={(e) => setRepeatWeeks(Number(e.target.value))}
+              className="w-full rounded-xl border px-4 py-3"
+            >
+              <option value={1}>One time</option>
+              <option value={2}>2 weeks</option>
+              <option value={4}>4 weeks</option>
+              <option value={8}>8 weeks</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-4 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
             <p>
               <strong>Ends at:</strong> {endsAt ? new Date(endsAt).toLocaleString() : "—"}
             </p>
           </div>
 
-          <div className="md:col-span-3">
-            <button
-              disabled={loading}
-              className="rounded-xl bg-black px-5 py-3 text-white"
-            >
-              {loading ? "Adding..." : "Add availability"}
+          <div className="md:col-span-4">
+            <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-white">
+              {loading ? "Adding..." : repeatWeeks > 1 ? "Add recurring availability" : "Add availability"}
             </button>
           </div>
         </form>
@@ -260,10 +281,18 @@ export default function AvailabilityManager({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => duplicateSlot(slot)}
+                      onClick={() => duplicateSlot(slot, 1)}
                       className="rounded-xl border px-4 py-2 text-sm"
                     >
-                      Duplicate
+                      Next day
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => duplicateSlot(slot, 7)}
+                      className="rounded-xl border px-4 py-2 text-sm"
+                    >
+                      Next week
                     </button>
 
                     {slot.status !== "open" ? (
