@@ -40,6 +40,11 @@ export default function SignupForm({
     setError("");
     setMessage("");
 
+    if (role === "vendor") {
+      router.push("/partners");
+      return;
+    }
+
     if (!passwordsMatch) {
       setError("Passwords do not match.");
       return;
@@ -54,7 +59,7 @@ export default function SignupForm({
         emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
-          intended_role: role,
+          intended_role: "tourist",
         },
       },
     });
@@ -63,15 +68,6 @@ export default function SignupForm({
 
     if (error) {
       setError(error.message);
-      return;
-    }
-
-    if (role === "vendor") {
-      setMessage(
-        "Account created. After login, apply as a partner to access vendor tools.",
-      );
-      router.push("/partners");
-      router.refresh();
       return;
     }
 
@@ -117,121 +113,120 @@ export default function SignupForm({
               role === "vendor" ? "text-white/80" : "text-neutral-500"
             }`}
           >
-            List experiences, manage availability, and receive leads.
+            Apply to list experiences and receive leads.
           </p>
         </button>
       </div>
 
-      <form onSubmit={handleSignup} className="mt-8 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium">Full name</label>
-          <input
-            className="w-full rounded-xl border px-4 py-4"
-            type="text"
-            placeholder="Your full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-          />
-        </div>
+      {role === "vendor" ? (
+        <div className="mt-8 rounded-2xl bg-neutral-50 p-5">
+          <p className="text-sm text-neutral-600">
+            Partner accounts are handled through the partner application flow.
+          </p>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium">Email</label>
-          <input
-            className="w-full rounded-xl border px-4 py-4"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <Link
+            href="/partners"
+            className="mt-4 inline-block rounded-xl bg-black px-5 py-3 text-white"
+          >
+            Continue to partner application
+          </Link>
         </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium">Password</label>
-          <div className="relative">
+      ) : (
+        <form onSubmit={handleSignup} className="mt-8 space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium">Full name</label>
             <input
-              className="w-full rounded-xl border px-4 py-4 pr-14"
-              type={passwordType}
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-xl border px-4 py-4"
+              type="text"
+              placeholder="Your full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-neutral-500"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
           </div>
-        </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            Confirm password
-          </label>
-          <div className="relative">
+          <div>
+            <label className="mb-2 block text-sm font-medium">Email</label>
             <input
-              className={`w-full rounded-xl border px-4 py-4 pr-14 ${
-                showMismatch ? "border-red-500" : ""
-              }`}
-              type={passwordType}
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-xl border px-4 py-4"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-neutral-500"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
           </div>
 
-          {showMismatch ? (
-            <p className="mt-2 text-sm text-red-600">
-              Passwords do not match.
-            </p>
-          ) : passwordsStarted && passwordsMatch ? (
-            <p className="mt-2 text-sm text-green-700">
-              Passwords match.
-            </p>
-          ) : null}
-        </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Password</label>
+            <div className="relative">
+              <input
+                className="w-full rounded-xl border px-4 py-4 pr-14"
+                type={passwordType}
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-neutral-500"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
 
-        <div className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
-          {role === "tourist" ? (
-            <p>
-              You are creating a <strong>Traveler</strong> account.
-            </p>
-          ) : (
-            <p>
-              You are creating a <strong>Partner</strong> account.
-            </p>
-          )}
-        </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Confirm password
+            </label>
+            <div className="relative">
+              <input
+                className={`w-full rounded-xl border px-4 py-4 pr-14 ${
+                  showMismatch ? "border-red-500" : ""
+                }`}
+                type={passwordType}
+                placeholder="Repeat your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-neutral-500"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-green-700">{message}</p> : null}
+            {showMismatch ? (
+              <p className="mt-2 text-sm text-red-600">
+                Passwords do not match.
+              </p>
+            ) : passwordsStarted && passwordsMatch ? (
+              <p className="mt-2 text-sm text-green-700">
+                Passwords match.
+              </p>
+            ) : null}
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading || showMismatch}
-          className="w-full rounded-xl bg-black px-4 py-4 text-white disabled:opacity-50"
-        >
-          {loading
-            ? "Creating account..."
-            : role === "vendor"
-              ? "Create partner account"
-              : "Create traveler account"}
-        </button>
-      </form>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {message ? <p className="text-sm text-green-700">{message}</p> : null}
+
+          <button
+            type="submit"
+            disabled={loading || showMismatch}
+            className="w-full rounded-xl bg-black px-4 py-4 text-white disabled:opacity-50"
+          >
+            {loading ? "Creating account..." : "Create traveler account"}
+          </button>
+        </form>
+      )}
 
       <p className="mt-6 text-sm text-neutral-600">
         Already have an account?{" "}
