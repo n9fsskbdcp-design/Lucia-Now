@@ -19,7 +19,7 @@ export default async function LoginPage() {
       .single();
 
     if (profile?.role === "vendor") {
-      redirect("/vendor");
+      redirect("/vendor/experiences");
     }
 
     if (profile?.role === "admin") {
@@ -30,29 +30,50 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-20">
-      <h1 className="text-4xl font-semibold">Login</h1>
-      <p className="mt-3 text-neutral-600">
-        Sign in to manage your account or continue your booking.
-      </p>
+    <main className="mx-auto max-w-5xl px-6 py-20">
+      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="rounded-3xl bg-white p-8 shadow-sm">
+          <h1 className="text-4xl font-semibold">Login</h1>
+          <p className="mt-3 text-neutral-600">
+            One login for everyone. Traveler accounts go to your account.
+            Partner accounts go to your vendor dashboard.
+          </p>
 
-      <Suspense fallback={<div className="mt-8">Loading…</div>}>
-        <LoginForm />
-      </Suspense>
+          <Suspense fallback={<div className="mt-8">Loading…</div>}>
+            <LoginForm />
+          </Suspense>
+        </section>
 
-      <p className="mt-6 text-sm text-neutral-600">
-        Don&apos;t have an account?{" "}
-        <Link href="/auth/signup" className="font-medium underline">
-          Create one
-        </Link>
-      </p>
+        <aside className="space-y-4">
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-neutral-500">Booking experiences?</p>
+            <h2 className="mt-2 text-xl font-semibold">Traveler account</h2>
+            <p className="mt-3 text-sm text-neutral-600">
+              Create a normal account to browse, request bookings, and track them in your account.
+            </p>
+            <Link
+              href="/auth/signup"
+              className="mt-5 inline-block rounded-xl bg-black px-5 py-3 text-white"
+            >
+              Create traveler account
+            </Link>
+          </div>
 
-      <p className="mt-2 text-sm text-neutral-600">
-        Want to list tours or transport?{" "}
-        <Link href="/partners" className="font-medium underline">
-          Become a partner
-        </Link>
-      </p>
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-neutral-500">Own tours or transport?</p>
+            <h2 className="mt-2 text-xl font-semibold">Partner account</h2>
+            <p className="mt-3 text-sm text-neutral-600">
+              Apply as a partner if you want to list experiences and manage leads.
+            </p>
+            <Link
+              href="/partners"
+              className="mt-5 inline-block rounded-xl border px-5 py-3"
+            >
+              Become a partner
+            </Link>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }
