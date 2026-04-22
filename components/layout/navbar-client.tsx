@@ -97,7 +97,6 @@ export default function NavbarClient({
             {hasUser && role === "vendor" && (
               <>
                 <Link href="/vendor/experiences">Dashboard</Link>
-                <Link href="/vendor/experiences/new">New Experience</Link>
                 <Link href="/vendor">Leads</Link>
                 <Link href="/account">Account</Link>
                 <LogoutButton />
@@ -179,12 +178,6 @@ export default function NavbarClient({
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Dashboard
-              </Link>
-              <Link
-                href="/vendor/experiences/new"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
-                New
               </Link>
               <Link
                 href="/vendor"
