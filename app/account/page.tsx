@@ -83,9 +83,10 @@ export default async function AccountPage() {
           ) : (
             <div className="mt-6 space-y-4">
               {requests.map((request) => (
-                <div
+                <Link
                   key={request.id}
-                  className="rounded-2xl bg-neutral-50 p-5"
+                  href={`/account/bookings/${request.id}`}
+                  className="block rounded-2xl bg-neutral-50 p-5 transition hover:bg-neutral-100"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -103,21 +104,6 @@ export default async function AccountPage() {
                           {new Date(request.requested_start_at).toLocaleString()}
                         </p>
                       ) : null}
-
-                      {request.notes ? (
-                        <p className="mt-3 text-sm text-neutral-700">
-                          {request.notes}
-                        </p>
-                      ) : null}
-
-                      {request.experiences?.slug ? (
-                        <Link
-                          href={`/experiences/${request.experiences.slug}`}
-                          className="mt-4 inline-block text-sm font-medium underline"
-                        >
-                          View experience
-                        </Link>
-                      ) : null}
                     </div>
 
                     <div className="space-y-2">
@@ -125,7 +111,7 @@ export default async function AccountPage() {
                       <StatusBadge label={request.contact_status} subtle />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

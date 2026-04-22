@@ -65,9 +65,20 @@ export default async function VendorLeadDetailPage(
             </h1>
           </div>
 
-          <Link href="/vendor" className="rounded-xl border px-5 py-3">
-            Back to dashboard
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/vendor" className="rounded-xl border px-5 py-3">
+              Back to dashboard
+            </Link>
+
+            {lead.experiences?.slug ? (
+              <Link
+                href={`/experiences/${lead.experiences.slug}`}
+                className="rounded-xl bg-black px-5 py-3 text-white"
+              >
+                View public page
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
