@@ -63,7 +63,7 @@ export default function NavbarClient({
   }, [router, supabase]);
 
   const dashboardHref = useMemo(() => {
-    if (role === "vendor") return "/vendor";
+    if (role === "vendor") return "/vendor/experiences";
     if (role === "admin") return "/admin";
     return "/account";
   }, [role]);
@@ -94,13 +94,41 @@ export default function NavbarClient({
               </>
             )}
 
-            {hasUser && (
+            {hasUser && role === "vendor" && (
+              <>
+                <Link href="/vendor/experiences">Dashboard</Link>
+                <Link href="/vendor/experiences/new">New Experience</Link>
+                <Link href="/vendor">Leads</Link>
+                <Link href="/account">Account</Link>
+                <LogoutButton />
+                <Link
+                  href="/experiences"
+                  className="rounded-xl bg-black px-5 py-3 text-white"
+                >
+                  {primaryLabel}
+                </Link>
+              </>
+            )}
+
+            {hasUser && role === "admin" && (
+              <>
+                <Link href={dashboardHref}>Dashboard</Link>
+                <Link href="/admin/applications">Applications</Link>
+                <Link href="/account">Account</Link>
+                <LogoutButton />
+                <Link
+                  href="/experiences"
+                  className="rounded-xl bg-black px-5 py-3 text-white"
+                >
+                  {primaryLabel}
+                </Link>
+              </>
+            )}
+
+            {hasUser && role !== "vendor" && role !== "admin" && (
               <>
                 <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/account">Account</Link>
-                {role === "admin" ? (
-                  <Link href="/admin/applications">Applications</Link>
-                ) : null}
                 <LogoutButton />
                 <Link
                   href="/experiences"
@@ -144,10 +172,80 @@ export default function NavbarClient({
             </>
           )}
 
-          {hasUser && (
+          {hasUser && role === "vendor" && (
             <>
               <Link
-                href={dashboardHref}
+                href="/vendor/experiences"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/vendor/experiences/new"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                New
+              </Link>
+              <Link
+                href="/vendor"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Leads
+              </Link>
+              <Link
+                href="/account"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Account
+              </Link>
+              <span className="rounded-full bg-neutral-100 px-4 py-2">
+                <LogoutButton />
+              </span>
+              <Link
+                href="/experiences"
+                className="rounded-full bg-black px-4 py-2 text-white"
+              >
+                {primaryLabel}
+              </Link>
+            </>
+          )}
+
+          {hasUser && role === "admin" && (
+            <>
+              <Link
+                href="/admin"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/admin/applications"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Applications
+              </Link>
+              <Link
+                href="/account"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Account
+              </Link>
+              <span className="rounded-full bg-neutral-100 px-4 py-2">
+                <LogoutButton />
+              </span>
+              <Link
+                href="/experiences"
+                className="rounded-full bg-black px-4 py-2 text-white"
+              >
+                {primaryLabel}
+              </Link>
+            </>
+          )}
+
+          {hasUser && role !== "vendor" && role !== "admin" && (
+            <>
+              <Link
+                href="/account"
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Dashboard
@@ -158,14 +256,6 @@ export default function NavbarClient({
               >
                 Account
               </Link>
-              {role === "admin" ? (
-                <Link
-                  href="/admin/applications"
-                  className="rounded-full bg-neutral-100 px-4 py-2"
-                >
-                  Applications
-                </Link>
-              ) : null}
               <span className="rounded-full bg-neutral-100 px-4 py-2">
                 <LogoutButton />
               </span>
