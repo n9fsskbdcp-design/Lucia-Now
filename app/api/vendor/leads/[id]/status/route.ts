@@ -9,7 +9,6 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -32,7 +31,7 @@ export async function POST(
 
   const { data: lead } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, vendor_id")
+    .select("id, vendor_id, guest_email")
     .eq("id", id)
     .single();
 
@@ -59,18 +58,31 @@ export async function POST(
     return NextResponse.redirect(new URL(`/vendor/leads/${id}`, request.url));
   }
 
+  const finalStatus =
+    contactStatus === "confirmed"
+      ? "confirmed"
+      : contactStatus === "declined"
+        ? "declined"
+        : "new";
+
   await supabaseAdmin
     .from("booking_requests")
     .update({
       contact_status: contactStatus,
-      status:
-        contactStatus === "confirmed"
-          ? "confirmed"
-          : contactStatus === "declined"
-            ? "declined"
-            : "new",
+      status: finalStatus,
     })
     .eq("id", id);
+
+  await supabaseAdmin.from("notifications_queue").insert({
+    type: "booking_status_update",
+    recipient_email: lead.guest_email,
+    subject: `Booking update: ${contactStatus}`,
+    payload: {
+      booking_request_id: id,
+      contact_status: contactStatus,
+      status: finalStatus,
+    },
+  });
 
   return NextResponse.redirect(new URL(`/vendor/leads/${id}`, request.url));
 }

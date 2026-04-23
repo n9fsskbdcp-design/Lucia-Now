@@ -11,7 +11,6 @@ export default async function VendorLeadDetailPage(
   const { id } = await props.params;
 
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -69,7 +68,6 @@ export default async function VendorLeadDetailPage(
             <Link href="/vendor" className="rounded-xl border px-5 py-3">
               Back to dashboard
             </Link>
-
             {lead.experiences?.slug ? (
               <Link
                 href={`/experiences/${lead.experiences.slug}`}
@@ -93,7 +91,7 @@ export default async function VendorLeadDetailPage(
 
             {lead.notes ? (
               <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
-                <p className="text-sm font-medium">Notes</p>
+                <p className="text-sm font-medium">Guest notes</p>
                 <p className="mt-2 text-sm text-neutral-600">{lead.notes}</p>
               </div>
             ) : null}
@@ -106,41 +104,45 @@ export default async function VendorLeadDetailPage(
               <p><strong>Status:</strong> {lead.status}</p>
               <p><strong>Contact status:</strong> {lead.contact_status}</p>
               {lead.requested_start_at ? (
-                <p>
-                  <strong>Requested slot:</strong>{" "}
-                  {new Date(lead.requested_start_at).toLocaleString()}
-                </p>
+                <p><strong>Requested slot:</strong> {new Date(lead.requested_start_at).toLocaleString()}</p>
               ) : null}
               {lead.requested_end_at ? (
-                <p>
-                  <strong>Requested end:</strong>{" "}
-                  {new Date(lead.requested_end_at).toLocaleString()}
-                </p>
+                <p><strong>Requested end:</strong> {new Date(lead.requested_end_at).toLocaleString()}</p>
               ) : null}
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="contacted" />
-                <button className="rounded-xl border px-5 py-3">
-                  Mark contacted
-                </button>
+                <button className="rounded-xl border px-5 py-3">Mark contacted</button>
               </form>
-
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="confirmed" />
-                <button className="rounded-xl bg-black px-5 py-3 text-white">
-                  Confirm
-                </button>
+                <button className="rounded-xl bg-black px-5 py-3 text-white">Confirm</button>
               </form>
-
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="declined" />
-                <button className="rounded-xl border px-5 py-3 text-red-600">
-                  Decline
-                </button>
+                <button className="rounded-xl border px-5 py-3 text-red-600">Decline</button>
               </form>
             </div>
+
+            <form
+              action={`/api/vendor/leads/${lead.id}/notes`}
+              method="post"
+              className="mt-8"
+            >
+              <label className="mb-2 block text-sm font-medium">Vendor notes</label>
+              <textarea
+                name="vendor_notes"
+                defaultValue={lead.vendor_notes || ""}
+                rows={5}
+                className="w-full rounded-2xl border px-4 py-3"
+                placeholder="Internal notes about this lead..."
+              />
+              <button className="mt-3 rounded-xl border px-5 py-3">
+                Save notes
+              </button>
+            </form>
           </div>
         </div>
       </section>

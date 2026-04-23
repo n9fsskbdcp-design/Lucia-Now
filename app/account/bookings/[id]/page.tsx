@@ -11,7 +11,6 @@ export default async function AccountBookingDetailPage(
   const { id } = await props.params;
 
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -35,6 +34,12 @@ export default async function AccountBookingDetailPage(
 
   if (!request) notFound();
 
+  const timeline = [
+    { label: "Request sent", active: true },
+    { label: "Vendor contacted", active: ["contacted", "confirmed"].includes(request.contact_status) },
+    { label: "Booking confirmed", active: request.status === "confirmed" },
+  ];
+
   return (
     <main className="min-h-screen bg-neutral-50">
       <section className="mx-auto max-w-5xl px-6 py-16">
@@ -51,59 +56,40 @@ export default async function AccountBookingDetailPage(
           </Link>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Booking request</h2>
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-semibold">Progress</h2>
 
-            <div className="mt-5 space-y-3 text-neutral-700">
-              <p><strong>Guests:</strong> {request.guests}</p>
-              <p><strong>Status:</strong> {request.status}</p>
-              <p><strong>Contact status:</strong> {request.contact_status}</p>
-
-              {request.requested_start_at ? (
-                <p>
-                  <strong>Requested slot:</strong>{" "}
-                  {new Date(request.requested_start_at).toLocaleString()}
-                </p>
-              ) : null}
-
-              {request.requested_end_at ? (
-                <p>
-                  <strong>Ends:</strong>{" "}
-                  {new Date(request.requested_end_at).toLocaleString()}
-                </p>
-              ) : null}
-            </div>
-
-            {request.notes ? (
-              <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
-                <p className="text-sm font-medium">Your notes</p>
-                <p className="mt-2 text-sm text-neutral-600">{request.notes}</p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Next actions</h2>
-
-            <div className="mt-5 space-y-3 text-neutral-700">
-              <p>
-                The vendor can mark your request as contacted, confirmed, or declined.
-              </p>
-              <p>
-                Once the vendor confirms, this page becomes the tourist’s single source of truth.
-              </p>
-            </div>
-
-            {request.experiences?.slug ? (
-              <Link
-                href={`/experiences/${request.experiences.slug}`}
-                className="mt-8 inline-block rounded-xl bg-black px-5 py-3 text-white"
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {timeline.map((step) => (
+              <div
+                key={step.label}
+                className={`rounded-2xl p-4 ${
+                  step.active ? "bg-green-50 text-green-800" : "bg-neutral-50 text-neutral-500"
+                }`}
               >
-                View experience again
-              </Link>
+                <p className="font-medium">{step.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 space-y-3 text-neutral-700">
+            <p><strong>Guests:</strong> {request.guests}</p>
+            <p><strong>Status:</strong> {request.status}</p>
+            <p><strong>Contact status:</strong> {request.contact_status}</p>
+            {request.requested_start_at ? (
+              <p>
+                <strong>Requested slot:</strong>{" "}
+                {new Date(request.requested_start_at).toLocaleString()}
+              </p>
             ) : null}
           </div>
+
+          {request.notes ? (
+            <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
+              <p className="text-sm font-medium">Your notes</p>
+              <p className="mt-2 text-sm text-neutral-600">{request.notes}</p>
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import AvailabilityManager from "@/components/vendor/availability-manager";
+import BlackoutManager from "@/components/vendor/blackout-manager";
 
 export default async function VendorAvailabilityPage(
   props: {
@@ -12,14 +13,11 @@ export default async function VendorAvailabilityPage(
   const { id } = await props.params;
 
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/auth/login");
-  }
+  if (!user) redirect("/auth/login");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -27,9 +25,7 @@ export default async function VendorAvailabilityPage(
     .eq("id", user.id)
     .single();
 
-  if (!profile) {
-    redirect("/");
-  }
+  if (!profile) redirect("/");
 
   const { data: experience } = await supabaseAdmin
     .from("experiences")
@@ -37,9 +33,7 @@ export default async function VendorAvailabilityPage(
     .eq("id", id)
     .single();
 
-  if (!experience) {
-    redirect("/vendor/experiences");
-  }
+  if (!experience) redirect("/vendor/experiences");
 
   if (profile.role !== "admin") {
     const { data: vendor } = await supabaseAdmin
@@ -55,6 +49,12 @@ export default async function VendorAvailabilityPage(
 
   const { data: slots } = await supabaseAdmin
     .from("availability_slots")
+    .select("*")
+    .eq("experience_id", id)
+    .order("starts_at", { ascending: true });
+
+  const { data: blackouts } = await supabaseAdmin
+    .from("availability_blackouts")
     .select("*")
     .eq("experience_id", id)
     .order("starts_at", { ascending: true });
@@ -76,17 +76,29 @@ export default async function VendorAvailabilityPage(
           </Link>
         </div>
 
-        <AvailabilityManager
-          experienceId={id}
-          slots={(slots ?? []) as {
-            id: string;
-            starts_at: string;
-            ends_at: string;
-            capacity_total: number;
-            spots_remaining: number;
-            status: string;
-          }[]}
-        />
+        <div className="space-y-8">
+          <AvailabilityManager
+            experienceId={id}
+            slots={(slots ?? []) as {
+              id: string;
+              starts_at: string;
+              ends_at: string;
+              capacity_total: number;
+              spots_remaining: number;
+              status: string;
+            }[]}
+          />
+
+          <BlackoutManager
+            experienceId={id}
+            blackouts={(blackouts ?? []) as {
+              id: string;
+              starts_at: string;
+              ends_at: string;
+              reason: string | null;
+            }[]}
+          />
+        </div>
       </section>
     </main>
   );
