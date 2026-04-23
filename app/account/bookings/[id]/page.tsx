@@ -3,6 +3,26 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+function headline(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "confirmed_pending_payment") {
+    return "Your request was accepted. Payment is needed to secure it.";
+  }
+
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
+    return "Your booking is paid and confirmed.";
+  }
+
+  if (contactStatus === "declined") {
+    return "This request was declined.";
+  }
+
+  if (contactStatus === "contacted") {
+    return "The vendor has contacted you or reviewed your request.";
+  }
+
+  return "Your request has been sent.";
+}
+
 export default async function AccountBookingDetailPage(
   props: {
     params: Promise<{ id: string }>;
@@ -37,7 +57,7 @@ export default async function AccountBookingDetailPage(
   const timeline = [
     { label: "Request sent", active: true },
     {
-      label: "Vendor confirmed",
+      label: "Vendor accepted",
       active: ["confirmed_pending_payment", "paid_confirmed"].includes(request.contact_status),
     },
     {
@@ -67,7 +87,21 @@ export default async function AccountBookingDetailPage(
         </div>
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold">Progress</h2>
+          <p className="text-sm font-medium text-neutral-500">Current status</p>
+          <h2 className="mt-2 text-2xl font-semibold">
+            {headline(request.contact_status, request.payment_status)}
+          </h2>
+
+          {request.contact_status === "confirmed_pending_payment" ? (
+            <Link
+              href={`/account/bookings/${request.id}/pay`}
+              className="mt-6 inline-block rounded-xl bg-black px-5 py-3 text-white"
+            >
+              Continue to payment
+            </Link>
+          ) : null}
+
+          <h3 className="mt-10 text-xl font-semibold">Progress</h3>
 
           <div className="mt-6 grid gap-4 md:grid-cols-4">
             {timeline.map((step) => (
@@ -84,8 +118,6 @@ export default async function AccountBookingDetailPage(
 
           <div className="mt-8 space-y-3 text-neutral-700">
             <p><strong>Guests:</strong> {request.guests}</p>
-            <p><strong>Status:</strong> {request.status}</p>
-            <p><strong>Contact status:</strong> {request.contact_status}</p>
             <p><strong>Payment:</strong> {request.payment_status}</p>
             {request.requested_start_at ? (
               <p>
@@ -94,15 +126,6 @@ export default async function AccountBookingDetailPage(
               </p>
             ) : null}
           </div>
-
-          {request.contact_status === "confirmed_pending_payment" ? (
-            <Link
-              href={`/account/bookings/${request.id}/pay`}
-              className="mt-8 inline-block rounded-xl bg-black px-5 py-3 text-white"
-            >
-              Continue to payment
-            </Link>
-          ) : null}
 
           {request.notes ? (
             <div className="mt-6 rounded-2xl bg-neutral-50 p-4">

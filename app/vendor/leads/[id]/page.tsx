@@ -9,6 +9,26 @@ function prettyStatus(label: string) {
   return label;
 }
 
+function actionMessage(status: string, paymentStatus: string) {
+  if (status === "confirmed_pending_payment") {
+    return "You confirmed this request. The traveler now needs to complete payment before the booking is secured.";
+  }
+
+  if (status === "paid_confirmed" && paymentStatus === "paid") {
+    return "This booking is paid and confirmed. Inventory has been deducted.";
+  }
+
+  if (status === "declined") {
+    return "This request has been declined.";
+  }
+
+  if (status === "contacted") {
+    return "This lead is marked as contacted.";
+  }
+
+  return "Review this lead and choose the next step.";
+}
+
 export default async function VendorLeadDetailPage(
   props: {
     params: Promise<{ id: string }>;
@@ -72,7 +92,7 @@ export default async function VendorLeadDetailPage(
 
           <div className="flex gap-3">
             <Link href="/vendor" className="rounded-xl border px-5 py-3">
-              Back to dashboard
+              Back to leads
             </Link>
             {lead.experiences?.slug ? (
               <Link
@@ -83,6 +103,16 @@ export default async function VendorLeadDetailPage(
               </Link>
             ) : null}
           </div>
+        </div>
+
+        <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-neutral-500">Current state</p>
+          <p className="mt-2 text-lg font-semibold">
+            {prettyStatus(lead.contact_status)}
+          </p>
+          <p className="mt-2 text-neutral-600">
+            {actionMessage(lead.contact_status, lead.payment_status)}
+          </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -121,17 +151,23 @@ export default async function VendorLeadDetailPage(
             <div className="mt-8 flex flex-wrap gap-3">
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="contacted" />
-                <button className="rounded-xl border px-5 py-3">Mark contacted</button>
+                <button className="rounded-xl border px-5 py-3">
+                  Mark contacted
+                </button>
               </form>
+
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="confirmed_pending_payment" />
                 <button className="rounded-xl bg-black px-5 py-3 text-white">
                   Confirm & request payment
                 </button>
               </form>
+
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="declined" />
-                <button className="rounded-xl border px-5 py-3 text-red-600">Decline</button>
+                <button className="rounded-xl border px-5 py-3 text-red-600">
+                  Decline
+                </button>
               </form>
             </div>
 

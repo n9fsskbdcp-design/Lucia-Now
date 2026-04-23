@@ -27,15 +27,15 @@ export async function POST(
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   }
 
+  if (booking.payment_status === "paid") {
+    return NextResponse.json({ success: true, alreadyPaid: true });
+  }
+
   if (booking.contact_status !== "confirmed_pending_payment") {
     return NextResponse.json(
       { error: "Booking is not awaiting payment" },
       { status: 400 },
     );
-  }
-
-  if (booking.payment_status === "paid") {
-    return NextResponse.json({ success: true });
   }
 
   if (booking.slot_id) {
@@ -76,7 +76,8 @@ export async function POST(
       contact_status: "paid_confirmed",
       status: "confirmed",
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("payment_status", "unpaid");
 
   await supabaseAdmin.from("notifications_queue").insert({
     type: "booking_paid",
