@@ -38,7 +38,7 @@ export async function POST(
 
   const { data: lead } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, vendor_id, guest_email, guests, slot_id")
+    .select("id, vendor_id, guest_email")
     .eq("id", id)
     .single();
 
@@ -75,7 +75,7 @@ export async function POST(
   }
 
   if (nextState === "contacted") {
-    payload.status = "new";
+    payload.status = "contacted";
     payload.payment_status = "unpaid";
   }
 
@@ -104,7 +104,10 @@ export async function POST(
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/vendor/leads/${id}?error=${encodeURIComponent(error.message)}`, request.url),
+      new URL(
+        `/vendor/leads/${id}?error=${encodeURIComponent(error.message)}`,
+        request.url,
+      ),
     );
   }
 
