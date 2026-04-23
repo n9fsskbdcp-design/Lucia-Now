@@ -11,6 +11,23 @@ type SlotRow = {
   spots_remaining: number;
 };
 
+type BlackoutRow = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
+  const slotStart = new Date(slot.starts_at).getTime();
+  const slotEnd = new Date(slot.ends_at).getTime();
+
+  return blackouts.some((blackout) => {
+    const blackoutStart = new Date(blackout.starts_at).getTime();
+    const blackoutEnd = new Date(blackout.ends_at).getTime();
+    return slotStart < blackoutEnd && slotEnd > blackoutStart;
+  });
+}
+
 export default async function BookPage(
   props: {
     params: Promise<{ slug: string }>;
@@ -46,6 +63,13 @@ export default async function BookPage(
     profile = data;
   }
 
+  const { data: blackoutData } = await supabaseAdmin
+    .from("availability_blackouts")
+    .select("id, starts_at, ends_at")
+    .eq("experience_id", item.id);
+
+  const blackouts = (blackoutData ?? []) as BlackoutRow[];
+
   let selectedSlot: SlotRow | null = null;
 
   if (slot) {
@@ -56,7 +80,8 @@ export default async function BookPage(
       .eq("experience_id", item.id)
       .single();
 
-    selectedSlot = (data ?? null) as SlotRow | null;
+    const maybeSlot = (data ?? null) as SlotRow | null;
+    selectedSlot = maybeSlot && !isBlocked(maybeSlot, blackouts) ? maybeSlot : null;
   }
 
   return (
@@ -84,6 +109,10 @@ export default async function BookPage(
               <p className="mt-1 text-sm text-neutral-500">
                 Spots left: {selectedSlot.spots_remaining}
               </p>
+            </div>
+          ) : slot ? (
+            <div className="mt-6 rounded-2xl bg-red-50 p-4 text-red-700">
+              That time is no longer available.
             </div>
           ) : null}
 

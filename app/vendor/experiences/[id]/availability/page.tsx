@@ -68,12 +68,20 @@ export default async function VendorAvailabilityPage(
             <h1 className="mt-2 text-4xl font-semibold">{experience.title}</h1>
           </div>
 
-          <Link
-            href={`/vendor/experiences/${id}`}
-            className="rounded-xl border px-5 py-3"
-          >
-            Back to listing
-          </Link>
+          <div className="flex gap-3">
+  <Link
+    href={`/vendor/experiences/${id}/calendar`}
+    className="rounded-xl border px-5 py-3"
+  >
+    Calendar view
+  </Link>
+  <Link
+    href={`/vendor/experiences/${id}`}
+    className="rounded-xl border px-5 py-3"
+  >
+    Back to listing
+  </Link>
+</div>
         </div>
 
         <div className="space-y-8">

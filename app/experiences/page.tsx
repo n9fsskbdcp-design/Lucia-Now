@@ -36,6 +36,25 @@ type SlotRow = {
   status: string;
 };
 
+type BlackoutRow = {
+  id: string;
+  experience_id: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
+  const slotStart = new Date(slot.starts_at).getTime();
+  const slotEnd = new Date(slot.ends_at).getTime();
+
+  return blackouts.some((blackout) => {
+    if (blackout.experience_id !== slot.experience_id) return false;
+    const blackoutStart = new Date(blackout.starts_at).getTime();
+    const blackoutEnd = new Date(blackout.ends_at).getTime();
+    return slotStart < blackoutEnd && slotEnd > blackoutStart;
+  });
+}
+
 export default async function ExperiencesPage({
   searchParams,
 }: {
@@ -93,7 +112,14 @@ export default async function ExperiencesPage({
     .gte("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
-  const slots: SlotRow[] = (slotData ?? []) as SlotRow[];
+  const { data: blackoutData } = await supabaseAdmin
+    .from("availability_blackouts")
+    .select("id, experience_id, starts_at, ends_at")
+    .in("experience_id", ids);
+
+  const rawSlots: SlotRow[] = (slotData ?? []) as SlotRow[];
+  const blackouts: BlackoutRow[] = (blackoutData ?? []) as BlackoutRow[];
+  const slots = rawSlots.filter((slot) => !isBlocked(slot, blackouts));
 
   function cover(id: string) {
     const coverImage =
@@ -228,13 +254,9 @@ export default async function ExperiencesPage({
                   <div className="mt-6 flex items-end justify-between">
                     <div>
                       <p className="text-sm text-neutral-500">From</p>
-
                       <p className="text-2xl font-semibold">${item.base_price}</p>
-
                       <p className="text-xs text-neutral-400">
-                        {item.base_price_type === "per_group"
-                          ? "Per group"
-                          : "Per person"}
+                        {item.base_price_type === "per_group" ? "Per group" : "Per person"}
                       </p>
                     </div>
 
