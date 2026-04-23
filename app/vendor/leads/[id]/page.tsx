@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import MessageThread from "@/components/booking/message-thread";
 
 function prettyStatus(label: string) {
   if (label === "confirmed_pending_payment") return "Awaiting payment";
@@ -88,6 +89,12 @@ export default async function VendorLeadDetailPage(
     redirect("/vendor");
   }
 
+  const { data: messages } = await supabaseAdmin
+    .from("booking_messages")
+    .select("*")
+    .eq("booking_request_id", id)
+    .order("created_at", { ascending: true });
+
   const mailSubject = encodeURIComponent(
     `Lucia Now booking request: ${lead.experiences?.title || "Experience"}`,
   );
@@ -144,7 +151,9 @@ export default async function VendorLeadDetailPage(
         ) : null}
 
         <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-neutral-500">Current state</p>
+          <p className="text-sm font-medium text-neutral-500">
+            Current state
+          </p>
 
           <p className="mt-2 text-lg font-semibold">
             {prettyStatus(lead.contact_status)}
@@ -163,9 +172,11 @@ export default async function VendorLeadDetailPage(
               <p>
                 <strong>Name:</strong> {lead.guest_name}
               </p>
+
               <p>
                 <strong>Email:</strong> {lead.guest_email}
               </p>
+
               <p>
                 <strong>Guests:</strong> {lead.guests}
               </p>
@@ -202,10 +213,12 @@ export default async function VendorLeadDetailPage(
               <p>
                 <strong>Status:</strong> {lead.status}
               </p>
+
               <p>
                 <strong>Contact status:</strong>{" "}
                 {prettyStatus(lead.contact_status)}
               </p>
+
               <p>
                 <strong>Payment:</strong> {lead.payment_status}
               </p>
@@ -227,6 +240,7 @@ export default async function VendorLeadDetailPage(
 
             <div className="mt-8 rounded-2xl bg-neutral-50 p-5">
               <p className="font-medium">Decision</p>
+
               <p className="mt-2 text-sm text-neutral-600">
                 Accepting sends the traveler to payment. Inventory is only
                 reduced after payment is completed.
@@ -275,6 +289,20 @@ export default async function VendorLeadDetailPage(
               </button>
             </form>
           </div>
+        </div>
+
+        <div className="mt-8">
+          <MessageThread
+            bookingId={lead.id}
+            messages={
+              (messages ?? []) as {
+                id: string;
+                sender_role: string;
+                message: string;
+                created_at: string;
+              }[]
+            }
+          />
         </div>
       </section>
     </main>

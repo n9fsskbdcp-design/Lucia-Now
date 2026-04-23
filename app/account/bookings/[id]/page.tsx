@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import MessageThread from "@/components/booking/message-thread";
 
 function headline(contactStatus: string, paymentStatus: string) {
   if (contactStatus === "confirmed_pending_payment") {
@@ -31,6 +32,7 @@ export default async function AccountBookingDetailPage(
   const { id } = await props.params;
 
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -54,11 +56,19 @@ export default async function AccountBookingDetailPage(
 
   if (!request) notFound();
 
+  const { data: messages } = await supabaseAdmin
+    .from("booking_messages")
+    .select("*")
+    .eq("booking_request_id", id)
+    .order("created_at", { ascending: true });
+
   const timeline = [
     { label: "Request sent", active: true },
     {
       label: "Vendor accepted",
-      active: ["confirmed_pending_payment", "paid_confirmed"].includes(request.contact_status),
+      active: ["confirmed_pending_payment", "paid_confirmed"].includes(
+        request.contact_status,
+      ),
     },
     {
       label: "Payment completed",
@@ -66,7 +76,9 @@ export default async function AccountBookingDetailPage(
     },
     {
       label: "Booking secured",
-      active: request.contact_status === "paid_confirmed" && request.payment_status === "paid",
+      active:
+        request.contact_status === "paid_confirmed" &&
+        request.payment_status === "paid",
     },
   ];
 
@@ -87,7 +99,10 @@ export default async function AccountBookingDetailPage(
         </div>
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
-          <p className="text-sm font-medium text-neutral-500">Current status</p>
+          <p className="text-sm font-medium text-neutral-500">
+            Current status
+          </p>
+
           <h2 className="mt-2 text-2xl font-semibold">
             {headline(request.contact_status, request.payment_status)}
           </h2>
@@ -108,7 +123,9 @@ export default async function AccountBookingDetailPage(
               <div
                 key={step.label}
                 className={`rounded-2xl p-4 ${
-                  step.active ? "bg-green-50 text-green-800" : "bg-neutral-50 text-neutral-500"
+                  step.active
+                    ? "bg-green-50 text-green-800"
+                    : "bg-neutral-50 text-neutral-500"
                 }`}
               >
                 <p className="font-medium">{step.label}</p>
@@ -117,8 +134,14 @@ export default async function AccountBookingDetailPage(
           </div>
 
           <div className="mt-8 space-y-3 text-neutral-700">
-            <p><strong>Guests:</strong> {request.guests}</p>
-            <p><strong>Payment:</strong> {request.payment_status}</p>
+            <p>
+              <strong>Guests:</strong> {request.guests}
+            </p>
+
+            <p>
+              <strong>Payment:</strong> {request.payment_status}
+            </p>
+
             {request.requested_start_at ? (
               <p>
                 <strong>Requested slot:</strong>{" "}
@@ -133,6 +156,20 @@ export default async function AccountBookingDetailPage(
               <p className="mt-2 text-sm text-neutral-600">{request.notes}</p>
             </div>
           ) : null}
+        </div>
+
+        <div className="mt-8">
+          <MessageThread
+            bookingId={request.id}
+            messages={
+              (messages ?? []) as {
+                id: string;
+                sender_role: string;
+                message: string;
+                created_at: string;
+              }[]
+            }
+          />
         </div>
       </section>
     </main>
