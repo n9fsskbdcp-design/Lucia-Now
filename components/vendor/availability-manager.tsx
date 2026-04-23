@@ -36,7 +36,8 @@ export default function AvailabilityManager({
   const [startsAt, setStartsAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(180);
   const [capacityTotal, setCapacityTotal] = useState(6);
-  const [repeatWeeks, setRepeatWeeks] = useState(1);
+  const [repeatMode, setRepeatMode] = useState<"once" | "daily" | "weekly">("once");
+  const [repeatCount, setRepeatCount] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const endsAt = useMemo(() => {
@@ -57,42 +58,68 @@ export default function AvailabilityManager({
     e.preventDefault();
     setLoading(true);
 
-    const endpoint =
-      repeatWeeks > 1
-        ? `/api/vendor/experiences/${experienceId}/availability/recurring`
-        : `/api/vendor/experiences/${experienceId}/availability`;
+    if (repeatMode === "once") {
+      const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          starts_at: startsAt,
+          ends_at: endsAt,
+          capacity_total: capacityTotal,
+        }),
+      });
 
-    const payload =
-      repeatWeeks > 1
-        ? {
-            starts_at: startsAt,
-            duration_minutes: durationMinutes,
-            capacity_total: capacityTotal,
-            weeks: repeatWeeks,
-          }
-        : {
-            starts_at: startsAt,
-            ends_at: endsAt,
-            capacity_total: capacityTotal,
-          };
+      const data = await res.json();
+      setLoading(false);
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+      if (!res.ok) {
+        toast.error(data.error || "Could not create slot");
+        return;
+      }
 
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      toast.error(data.error || "Could not create slot");
+      toast.success("Availability slot added");
+      window.location.reload();
       return;
     }
 
-    toast.success(repeatWeeks > 1 ? "Weekly slots added" : "Availability slot added");
+    const intervalDays = repeatMode === "daily" ? 1 : 7;
+    const start = new Date(startsAt);
+
+    const rows = Array.from({ length: repeatCount }).map((_, index) => {
+      const nextStart = new Date(start);
+      nextStart.setDate(nextStart.getDate() + index * intervalDays);
+
+      return {
+        starts_at: nextStart.toISOString(),
+        duration_minutes: durationMinutes,
+        capacity_total: capacityTotal,
+        weeks: 1,
+      };
+    });
+
+    for (const row of rows) {
+      const res = await fetch(`/api/vendor/experiences/${experienceId}/availability/recurring`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          starts_at: row.starts_at,
+          duration_minutes: row.duration_minutes,
+          capacity_total: row.capacity_total,
+          weeks: 1,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setLoading(false);
+        toast.error(data.error || "Could not create recurring slots");
+        return;
+      }
+    }
+
+    setLoading(false);
+    toast.success(`${repeatMode === "daily" ? "Daily" : "Weekly"} slots added`);
     window.location.reload();
   }
 
@@ -105,9 +132,7 @@ export default function AvailabilityManager({
 
     const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
@@ -129,9 +154,7 @@ export default function AvailabilityManager({
   async function updateSlot(slotId: string, status: string) {
     const res = await fetch(`/api/vendor/experiences/${experienceId}/availability`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         slot_id: slotId,
         status,
@@ -171,7 +194,7 @@ export default function AvailabilityManager({
       <section className="rounded-3xl bg-white p-8 shadow-sm">
         <h2 className="text-2xl font-semibold">Add available time</h2>
         <p className="mt-2 text-neutral-600">
-          Create one-off or recurring weekly slots.
+          Create one-time, daily, or weekly availability.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -229,18 +252,36 @@ export default function AvailabilityManager({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">Repeat weekly</label>
+            <label className="mb-2 block text-sm font-medium">Repeat</label>
             <select
-              value={repeatWeeks}
-              onChange={(e) => setRepeatWeeks(Number(e.target.value))}
+              value={repeatMode}
+              onChange={(e) => setRepeatMode(e.target.value as "once" | "daily" | "weekly")}
               className="w-full rounded-xl border px-4 py-3"
             >
-              <option value={1}>One time</option>
-              <option value={2}>2 weeks</option>
-              <option value={4}>4 weeks</option>
-              <option value={8}>8 weeks</option>
+              <option value="once">One time</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
             </select>
           </div>
+
+          {repeatMode !== "once" ? (
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Repeat count
+              </label>
+              <select
+                value={repeatCount}
+                onChange={(e) => setRepeatCount(Number(e.target.value))}
+                className="w-full rounded-xl border px-4 py-3"
+              >
+                <option value={2}>2 times</option>
+                <option value={3}>3 times</option>
+                <option value={5}>5 times</option>
+                <option value={7}>7 times</option>
+                <option value={14}>14 times</option>
+              </select>
+            </div>
+          ) : null}
 
           <div className="md:col-span-4 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
             <p>
@@ -250,7 +291,7 @@ export default function AvailabilityManager({
 
           <div className="md:col-span-4">
             <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-white">
-              {loading ? "Adding..." : repeatWeeks > 1 ? "Add recurring availability" : "Add availability"}
+              {loading ? "Adding..." : "Add availability"}
             </button>
           </div>
         </form>

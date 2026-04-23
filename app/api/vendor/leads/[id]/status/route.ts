@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const allowed = ["new", "contacted", "confirmed", "declined"] as const;
+const allowed = ["new", "contacted", "confirmed_pending_payment", "paid_confirmed", "declined"] as const;
 
 export async function POST(
   request: Request,
@@ -31,7 +31,7 @@ export async function POST(
 
   const { data: lead } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, vendor_id, guest_email")
+    .select("id, vendor_id, guest_email, requested_start_at, requested_end_at, slot_id")
     .eq("id", id)
     .single();
 
@@ -52,35 +52,51 @@ export async function POST(
   }
 
   const formData = await request.formData();
-  const contactStatus = String(formData.get("contact_status") || "");
+  const nextState = String(formData.get("contact_status") || "");
 
-  if (!allowed.includes(contactStatus as (typeof allowed)[number])) {
+  if (!allowed.includes(nextState as (typeof allowed)[number])) {
     return NextResponse.redirect(new URL(`/vendor/leads/${id}`, request.url));
   }
 
-  const finalStatus =
-    contactStatus === "confirmed"
-      ? "confirmed"
-      : contactStatus === "declined"
-        ? "declined"
-        : "new";
+  const payload: Record<string, unknown> = {
+    contact_status: nextState,
+    status:
+      nextState === "paid_confirmed"
+        ? "confirmed"
+        : nextState === "declined"
+          ? "declined"
+          : "new",
+  };
+
+  if (nextState === "confirmed_pending_payment") {
+    payload.confirmed_at = new Date().toISOString();
+    payload.payment_status = "unpaid";
+  }
+
+  if (nextState === "paid_confirmed") {
+    payload.confirmed_at = new Date().toISOString();
+    payload.paid_at = new Date().toISOString();
+    payload.payment_status = "paid";
+  }
+
+  if (nextState === "declined") {
+    payload.payment_status = "unpaid";
+  }
 
   await supabaseAdmin
     .from("booking_requests")
-    .update({
-      contact_status: contactStatus,
-      status: finalStatus,
-    })
+    .update(payload)
     .eq("id", id);
 
   await supabaseAdmin.from("notifications_queue").insert({
     type: "booking_status_update",
     recipient_email: lead.guest_email,
-    subject: `Booking update: ${contactStatus}`,
+    subject: `Booking update: ${nextState}`,
     payload: {
       booking_request_id: id,
-      contact_status: contactStatus,
-      status: finalStatus,
+      contact_status: nextState,
+      status: payload.status,
+      payment_status: payload.payment_status,
     },
   });
 

@@ -26,14 +26,6 @@ export default async function VendorCalendarPage(
 
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/");
-
   const { data: experience } = await supabaseAdmin
     .from("experiences")
     .select("id, title, vendor_id")
@@ -108,6 +100,24 @@ export default async function VendorCalendarPage(
                       <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs">
                         {slot.status}
                       </div>
+
+                      <form
+                        action={`/api/vendor/slots/${slot.id}/inventory`}
+                        method="post"
+                        className="mt-4 flex gap-2"
+                      >
+                        <input
+                          type="number"
+                          name="spots_remaining"
+                          min={0}
+                          max={slot.capacity_total}
+                          defaultValue={slot.spots_remaining}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                        <button className="rounded-xl border px-4 py-2 text-sm">
+                          Save
+                        </button>
+                      </form>
                     </div>
                   ))}
                 </div>

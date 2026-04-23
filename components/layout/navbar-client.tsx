@@ -124,9 +124,8 @@ export default function NavbarClient({
               </>
             )}
 
-            {hasUser && role !== "vendor" && role !== "admin" && (
+            {hasUser && role === "tourist" && (
               <>
-                <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -235,14 +234,8 @@ export default function NavbarClient({
             </>
           )}
 
-          {hasUser && role !== "vendor" && role !== "admin" && (
+          {hasUser && role === "tourist" && (
             <>
-              <Link
-                href="/account"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
-                Dashboard
-              </Link>
               <Link
                 href="/account"
                 className="rounded-full bg-neutral-100 px-4 py-2"

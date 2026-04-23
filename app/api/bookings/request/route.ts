@@ -36,17 +36,11 @@ export async function POST(request: Request) {
     const guestCount = Number(guests);
 
     if (!experience_id || !name || !email || !guestCount) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (guestCount < 1) {
-      return NextResponse.json(
-        { error: "Guests must be at least 1" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Guests must be at least 1" }, { status: 400 });
     }
 
     const { data: experience } = await supabaseAdmin
@@ -56,10 +50,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!experience) {
-      return NextResponse.json(
-        { error: "Experience not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Experience not found" }, { status: 404 });
     }
 
     let requestedStartAt: string | null = null;
@@ -74,10 +65,7 @@ export async function POST(request: Request) {
         .single();
 
       if (!slot) {
-        return NextResponse.json(
-          { error: "Selected slot not found" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Selected slot not found" }, { status: 400 });
       }
 
       const { data: blackoutData } = await supabaseAdmin
@@ -101,27 +89,8 @@ export async function POST(request: Request) {
         );
       }
 
-      if (slot.spots_remaining < guestCount) {
-        return NextResponse.json(
-          { error: "Not enough spots remaining" },
-          { status: 400 },
-        );
-      }
-
       requestedStartAt = slot.starts_at;
       requestedEndAt = slot.ends_at;
-
-      const updatedSpots = slot.spots_remaining - guestCount;
-      const updatedStatus = updatedSpots === 0 ? "sold_out" : "open";
-
-      await supabaseAdmin
-        .from("availability_slots")
-        .update({
-          spots_remaining: updatedSpots,
-          status: updatedStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", slot_id);
     }
 
     const { data: inserted, error } = await supabaseAdmin
@@ -139,15 +108,13 @@ export async function POST(request: Request) {
         requested_end_at: requestedEndAt,
         status: "new",
         contact_status: "new",
+        payment_status: "unpaid",
       })
       .select("id")
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     await supabaseAdmin.from("notifications_queue").insert({
@@ -164,9 +131,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Server error",
-      },
+      { error: error instanceof Error ? error.message : "Server error" },
       { status: 500 },
     );
   }
