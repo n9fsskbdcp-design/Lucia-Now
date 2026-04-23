@@ -3,6 +3,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+function prettyStatus(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") return "Paid & confirmed";
+  return contactStatus;
+}
+
 export default async function AccountPage() {
   const supabase = await createClient();
 
@@ -108,7 +114,10 @@ export default async function AccountPage() {
 
                     <div className="space-y-2">
                       <StatusBadge label={request.status} />
-                      <StatusBadge label={request.contact_status} subtle />
+                      <StatusBadge
+                        label={prettyStatus(request.contact_status, request.payment_status)}
+                        subtle
+                      />
                     </div>
                   </div>
                 </Link>
@@ -129,14 +138,16 @@ function StatusBadge({
   subtle?: boolean;
 }) {
   const base = subtle
-    ? "bg-neutral-100 text-neutral-700"
-    : label === "new"
-      ? "bg-blue-100 text-blue-800"
-      : label === "confirmed"
+    ? label === "Awaiting payment"
+      ? "bg-amber-100 text-amber-800"
+      : label === "Paid & confirmed"
         ? "bg-green-100 text-green-800"
-        : label === "declined"
-          ? "bg-red-100 text-red-800"
-          : "bg-neutral-100 text-neutral-700";
+        : "bg-neutral-100 text-neutral-700"
+    : label === "confirmed"
+      ? "bg-green-100 text-green-800"
+      : label === "declined"
+        ? "bg-red-100 text-red-800"
+        : "bg-blue-100 text-blue-800";
 
   return (
     <div className={`rounded-full px-3 py-1 text-xs font-medium ${base}`}>

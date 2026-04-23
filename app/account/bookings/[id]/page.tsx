@@ -36,8 +36,18 @@ export default async function AccountBookingDetailPage(
 
   const timeline = [
     { label: "Request sent", active: true },
-    { label: "Vendor contacted", active: ["contacted", "confirmed"].includes(request.contact_status) },
-    { label: "Booking confirmed", active: request.status === "confirmed" },
+    {
+      label: "Vendor confirmed",
+      active: ["confirmed_pending_payment", "paid_confirmed"].includes(request.contact_status),
+    },
+    {
+      label: "Payment completed",
+      active: request.payment_status === "paid",
+    },
+    {
+      label: "Booking secured",
+      active: request.contact_status === "paid_confirmed" && request.payment_status === "paid",
+    },
   ];
 
   return (
@@ -59,7 +69,7 @@ export default async function AccountBookingDetailPage(
         <div className="rounded-3xl bg-white p-8 shadow-sm">
           <h2 className="text-xl font-semibold">Progress</h2>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-4">
             {timeline.map((step) => (
               <div
                 key={step.label}
@@ -76,6 +86,7 @@ export default async function AccountBookingDetailPage(
             <p><strong>Guests:</strong> {request.guests}</p>
             <p><strong>Status:</strong> {request.status}</p>
             <p><strong>Contact status:</strong> {request.contact_status}</p>
+            <p><strong>Payment:</strong> {request.payment_status}</p>
             {request.requested_start_at ? (
               <p>
                 <strong>Requested slot:</strong>{" "}
@@ -83,6 +94,15 @@ export default async function AccountBookingDetailPage(
               </p>
             ) : null}
           </div>
+
+          {request.contact_status === "confirmed_pending_payment" ? (
+            <Link
+              href={`/account/bookings/${request.id}/pay`}
+              className="mt-8 inline-block rounded-xl bg-black px-5 py-3 text-white"
+            >
+              Continue to payment
+            </Link>
+          ) : null}
 
           {request.notes ? (
             <div className="mt-6 rounded-2xl bg-neutral-50 p-4">

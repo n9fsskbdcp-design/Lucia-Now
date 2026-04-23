@@ -3,6 +3,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+function prettyStatus(label: string) {
+  if (label === "confirmed_pending_payment") return "Awaiting payment";
+  if (label === "paid_confirmed") return "Paid & confirmed";
+  return label;
+}
+
 export default async function VendorLeadDetailPage(
   props: {
     params: Promise<{ id: string }>;
@@ -102,7 +108,8 @@ export default async function VendorLeadDetailPage(
 
             <div className="mt-5 space-y-3 text-neutral-700">
               <p><strong>Status:</strong> {lead.status}</p>
-              <p><strong>Contact status:</strong> {lead.contact_status}</p>
+              <p><strong>Contact status:</strong> {prettyStatus(lead.contact_status)}</p>
+              <p><strong>Payment:</strong> {lead.payment_status}</p>
               {lead.requested_start_at ? (
                 <p><strong>Requested slot:</strong> {new Date(lead.requested_start_at).toLocaleString()}</p>
               ) : null}
@@ -117,8 +124,10 @@ export default async function VendorLeadDetailPage(
                 <button className="rounded-xl border px-5 py-3">Mark contacted</button>
               </form>
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                <input type="hidden" name="contact_status" value="confirmed" />
-                <button className="rounded-xl bg-black px-5 py-3 text-white">Confirm</button>
+                <input type="hidden" name="contact_status" value="confirmed_pending_payment" />
+                <button className="rounded-xl bg-black px-5 py-3 text-white">
+                  Confirm & request payment
+                </button>
               </form>
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="declined" />
