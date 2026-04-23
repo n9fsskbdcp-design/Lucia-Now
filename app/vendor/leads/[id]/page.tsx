@@ -6,12 +6,14 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 function prettyStatus(label: string) {
   if (label === "confirmed_pending_payment") return "Awaiting payment";
   if (label === "paid_confirmed") return "Paid & confirmed";
+  if (label === "contacted") return "Contacted";
+  if (label === "declined") return "Declined";
   return label;
 }
 
 function actionMessage(status: string, paymentStatus: string) {
   if (status === "confirmed_pending_payment") {
-    return "You confirmed this request. The traveler now needs to complete payment before the booking is secured.";
+    return "You accepted this request. The traveler now needs to complete payment before the booking is secured.";
   }
 
   if (status === "paid_confirmed" && paymentStatus === "paid") {
@@ -23,20 +25,27 @@ function actionMessage(status: string, paymentStatus: string) {
   }
 
   if (status === "contacted") {
-    return "This lead is marked as contacted.";
+    return "This lead is marked as contacted. You can now accept it for payment or decline it.";
   }
 
-  return "Review this lead and choose the next step.";
+  return "Review this lead, contact the traveler if needed, then accept for payment or decline.";
 }
 
 export default async function VendorLeadDetailPage(
   props: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{
+      updated?: string;
+      notes?: string;
+      error?: string;
+    }>;
   },
 ) {
   const { id } = await props.params;
+  const searchParams = await props.searchParams;
 
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -79,10 +88,20 @@ export default async function VendorLeadDetailPage(
     redirect("/vendor");
   }
 
+  const mailSubject = encodeURIComponent(
+    `Lucia Now booking request: ${lead.experiences?.title || "Experience"}`,
+  );
+
+  const mailBody = encodeURIComponent(
+    `Hi ${lead.guest_name},\n\nThanks for your booking request on Lucia Now.\n\n`,
+  );
+
+  const contactHref = `mailto:${lead.guest_email}?subject=${mailSubject}&body=${mailBody}`;
+
   return (
     <main className="min-h-screen bg-neutral-50">
       <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-neutral-500">Lead Detail</p>
             <h1 className="mt-2 text-4xl font-semibold">
@@ -90,10 +109,11 @@ export default async function VendorLeadDetailPage(
             </h1>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link href="/vendor" className="rounded-xl border px-5 py-3">
               Back to leads
             </Link>
+
             {lead.experiences?.slug ? (
               <Link
                 href={`/experiences/${lead.experiences.slug}`}
@@ -105,11 +125,31 @@ export default async function VendorLeadDetailPage(
           </div>
         </div>
 
+        {searchParams.updated ? (
+          <div className="mb-6 rounded-2xl bg-green-50 p-4 text-green-800">
+            Lead updated: {prettyStatus(searchParams.updated)}
+          </div>
+        ) : null}
+
+        {searchParams.notes === "saved" ? (
+          <div className="mb-6 rounded-2xl bg-green-50 p-4 text-green-800">
+            Vendor notes saved.
+          </div>
+        ) : null}
+
+        {searchParams.error ? (
+          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-red-700">
+            {searchParams.error}
+          </div>
+        ) : null}
+
         <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-neutral-500">Current state</p>
+
           <p className="mt-2 text-lg font-semibold">
             {prettyStatus(lead.contact_status)}
           </p>
+
           <p className="mt-2 text-neutral-600">
             {actionMessage(lead.contact_status, lead.payment_status)}
           </p>
@@ -120,9 +160,31 @@ export default async function VendorLeadDetailPage(
             <h2 className="text-xl font-semibold">Guest</h2>
 
             <div className="mt-5 space-y-3 text-neutral-700">
-              <p><strong>Name:</strong> {lead.guest_name}</p>
-              <p><strong>Email:</strong> {lead.guest_email}</p>
-              <p><strong>Guests:</strong> {lead.guests}</p>
+              <p>
+                <strong>Name:</strong> {lead.guest_name}
+              </p>
+              <p>
+                <strong>Email:</strong> {lead.guest_email}
+              </p>
+              <p>
+                <strong>Guests:</strong> {lead.guests}
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href={contactHref}
+                className="rounded-xl bg-black px-5 py-3 text-white"
+              >
+                Email tourist
+              </a>
+
+              <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                <input type="hidden" name="contact_status" value="contacted" />
+                <button className="rounded-xl border px-5 py-3">
+                  Mark contacted
+                </button>
+              </form>
             </div>
 
             {lead.notes ? (
@@ -137,38 +199,58 @@ export default async function VendorLeadDetailPage(
             <h2 className="text-xl font-semibold">Booking</h2>
 
             <div className="mt-5 space-y-3 text-neutral-700">
-              <p><strong>Status:</strong> {lead.status}</p>
-              <p><strong>Contact status:</strong> {prettyStatus(lead.contact_status)}</p>
-              <p><strong>Payment:</strong> {lead.payment_status}</p>
+              <p>
+                <strong>Status:</strong> {lead.status}
+              </p>
+              <p>
+                <strong>Contact status:</strong>{" "}
+                {prettyStatus(lead.contact_status)}
+              </p>
+              <p>
+                <strong>Payment:</strong> {lead.payment_status}
+              </p>
+
               {lead.requested_start_at ? (
-                <p><strong>Requested slot:</strong> {new Date(lead.requested_start_at).toLocaleString()}</p>
+                <p>
+                  <strong>Requested slot:</strong>{" "}
+                  {new Date(lead.requested_start_at).toLocaleString()}
+                </p>
               ) : null}
+
               {lead.requested_end_at ? (
-                <p><strong>Requested end:</strong> {new Date(lead.requested_end_at).toLocaleString()}</p>
+                <p>
+                  <strong>Requested end:</strong>{" "}
+                  {new Date(lead.requested_end_at).toLocaleString()}
+                </p>
               ) : null}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                <input type="hidden" name="contact_status" value="contacted" />
-                <button className="rounded-xl border px-5 py-3">
-                  Mark contacted
-                </button>
-              </form>
+            <div className="mt-8 rounded-2xl bg-neutral-50 p-5">
+              <p className="font-medium">Decision</p>
+              <p className="mt-2 text-sm text-neutral-600">
+                Accepting sends the traveler to payment. Inventory is only
+                reduced after payment is completed.
+              </p>
 
-              <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                <input type="hidden" name="contact_status" value="confirmed_pending_payment" />
-                <button className="rounded-xl bg-black px-5 py-3 text-white">
-                  Confirm & request payment
-                </button>
-              </form>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                  <input
+                    type="hidden"
+                    name="contact_status"
+                    value="confirmed_pending_payment"
+                  />
+                  <button className="rounded-xl bg-black px-5 py-3 text-white">
+                    Accept & request payment
+                  </button>
+                </form>
 
-              <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                <input type="hidden" name="contact_status" value="declined" />
-                <button className="rounded-xl border px-5 py-3 text-red-600">
-                  Decline
-                </button>
-              </form>
+                <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                  <input type="hidden" name="contact_status" value="declined" />
+                  <button className="rounded-xl border px-5 py-3 text-red-600">
+                    Decline request
+                  </button>
+                </form>
+              </div>
             </div>
 
             <form
@@ -176,7 +258,10 @@ export default async function VendorLeadDetailPage(
               method="post"
               className="mt-8"
             >
-              <label className="mb-2 block text-sm font-medium">Vendor notes</label>
+              <label className="mb-2 block text-sm font-medium">
+                Vendor notes
+              </label>
+
               <textarea
                 name="vendor_notes"
                 defaultValue={lead.vendor_notes || ""}
@@ -184,6 +269,7 @@ export default async function VendorLeadDetailPage(
                 className="w-full rounded-2xl border px-4 py-3"
                 placeholder="Internal notes about this lead..."
               />
+
               <button className="mt-3 rounded-xl border px-5 py-3">
                 Save notes
               </button>

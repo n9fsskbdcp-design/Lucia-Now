@@ -113,6 +113,8 @@ export default function NavbarClient({
               <>
                 <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/admin/applications">Applications</Link>
+                <Link href="/admin/leads">Leads</Link>
+                <Link href="/admin/notifications">Notifications</Link>
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -215,6 +217,18 @@ export default function NavbarClient({
                 className="rounded-full bg-neutral-100 px-4 py-2"
               >
                 Applications
+              </Link>
+              <Link
+                href="/admin/leads"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Leads
+              </Link>
+              <Link
+                href="/admin/notifications"
+                className="rounded-full bg-neutral-100 px-4 py-2"
+              >
+                Notifications
               </Link>
               <Link
                 href="/account"
