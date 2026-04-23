@@ -39,12 +39,26 @@ export default async function VendorEditExperiencePage(
             Edit Experience
           </h1>
 
-          <Link
-            href={`/vendor/experiences/${id}/availability`}
-            className="rounded-xl border px-5 py-3"
-          >
-            Manage Availability
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/vendor/experiences/${id}/availability`}
+              className="rounded-xl border px-5 py-3"
+            >
+              Availability
+            </Link>
+            <Link
+              href={`/vendor/experiences/${id}/calendar`}
+              className="rounded-xl border px-5 py-3"
+            >
+              Calendar
+            </Link>
+            <Link
+              href={`/experiences/${experience.slug}`}
+              className="rounded-xl bg-black px-5 py-3 text-white"
+            >
+              View Public Page
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">

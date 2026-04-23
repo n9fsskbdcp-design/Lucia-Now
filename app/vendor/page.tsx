@@ -3,6 +3,33 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+type SlotRow = {
+  id: string;
+  experience_id: string;
+  status: string;
+  starts_at: string;
+  ends_at?: string;
+};
+
+type BlackoutRow = {
+  id: string;
+  experience_id: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
+  const slotStart = new Date(slot.starts_at).getTime();
+  const slotEnd = new Date(slot.ends_at ?? slot.starts_at).getTime();
+
+  return blackouts.some((blackout) => {
+    if (blackout.experience_id !== slot.experience_id) return false;
+    const blackoutStart = new Date(blackout.starts_at).getTime();
+    const blackoutEnd = new Date(blackout.ends_at).getTime();
+    return slotStart < blackoutEnd && slotEnd > blackoutStart;
+  });
+}
+
 export default async function VendorPage({
   searchParams,
 }: {
@@ -62,13 +89,23 @@ export default async function VendorPage({
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: false });
 
-  const { data: slots } = await supabaseAdmin
+  const safeIds = experienceIds.length
+    ? experienceIds
+    : ["00000000-0000-0000-0000-000000000000"];
+
+  const { data: slotsData } = await supabaseAdmin
     .from("availability_slots")
-    .select("id, experience_id, status, starts_at")
-    .in(
-      "experience_id",
-      experienceIds.length ? experienceIds : ["00000000-0000-0000-0000-000000000000"],
-    );
+    .select("id, experience_id, status, starts_at, ends_at")
+    .in("experience_id", safeIds);
+
+  const { data: blackoutData } = await supabaseAdmin
+    .from("availability_blackouts")
+    .select("id, experience_id, starts_at, ends_at")
+    .in("experience_id", safeIds);
+
+  const slots = (slotsData ?? []) as SlotRow[];
+  const blackouts = (blackoutData ?? []) as BlackoutRow[];
+  const visibleSlots = slots.filter((slot) => !isBlocked(slot, blackouts));
 
   const filteredRequests =
     selectedStatus === "all"
@@ -81,7 +118,7 @@ export default async function VendorPage({
     (e) => e.status === "published" && e.is_active,
   ).length;
 
-  const openSlotsCount = (slots ?? []).filter((s) => s.status === "open").length;
+  const openSlotsCount = visibleSlots.filter((s) => s.status === "open").length;
   const newLeadsCount = (requests ?? []).filter((r) => r.status === "new").length;
 
   return (

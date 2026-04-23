@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+type BlackoutRow = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+function isBlocked(
+  startsAt: string,
+  endsAt: string,
+  blackouts: BlackoutRow[],
+) {
+  const slotStart = new Date(startsAt).getTime();
+  const slotEnd = new Date(endsAt).getTime();
+
+  return blackouts.some((blackout) => {
+    const blackoutStart = new Date(blackout.starts_at).getTime();
+    const blackoutEnd = new Date(blackout.ends_at).getTime();
+    return slotStart < blackoutEnd && slotEnd > blackoutStart;
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -15,7 +36,17 @@ export async function POST(request: Request) {
     const guestCount = Number(guests);
 
     if (!experience_id || !name || !email || !guestCount) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
+    }
+
+    if (guestCount < 1) {
+      return NextResponse.json(
+        { error: "Guests must be at least 1" },
+        { status: 400 },
+      );
     }
 
     const { data: experience } = await supabaseAdmin
@@ -25,7 +56,10 @@ export async function POST(request: Request) {
       .single();
 
     if (!experience) {
-      return NextResponse.json({ error: "Experience not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Experience not found" },
+        { status: 404 },
+      );
     }
 
     let requestedStartAt: string | null = null;
@@ -40,15 +74,38 @@ export async function POST(request: Request) {
         .single();
 
       if (!slot) {
-        return NextResponse.json({ error: "Selected slot not found" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Selected slot not found" },
+          { status: 400 },
+        );
+      }
+
+      const { data: blackoutData } = await supabaseAdmin
+        .from("availability_blackouts")
+        .select("id, starts_at, ends_at")
+        .eq("experience_id", experience_id);
+
+      const blackouts = (blackoutData ?? []) as BlackoutRow[];
+
+      if (isBlocked(slot.starts_at, slot.ends_at, blackouts)) {
+        return NextResponse.json(
+          { error: "Selected slot is blocked and cannot be booked" },
+          { status: 400 },
+        );
       }
 
       if (slot.status !== "open") {
-        return NextResponse.json({ error: "Selected slot is not open" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Selected slot is not open" },
+          { status: 400 },
+        );
       }
 
       if (slot.spots_remaining < guestCount) {
-        return NextResponse.json({ error: "Not enough spots remaining" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Not enough spots remaining" },
+          { status: 400 },
+        );
       }
 
       requestedStartAt = slot.starts_at;
@@ -87,26 +144,29 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 },
+      );
     }
 
-    await supabaseAdmin.from("notifications_queue").insert([
-      {
-        type: "booking_request_vendor",
-        recipient_email: email,
-        subject: `Booking request received for ${experience.title}`,
-        payload: {
-          booking_request_id: inserted?.id,
-          experience_id,
-          experience_title: experience.title,
-        },
+    await supabaseAdmin.from("notifications_queue").insert({
+      type: "booking_request_vendor",
+      recipient_email: email,
+      subject: `Booking request received for ${experience.title}`,
+      payload: {
+        booking_request_id: inserted?.id,
+        experience_id,
+        experience_title: experience.title,
       },
-    ]);
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Server error" },
+      {
+        error: error instanceof Error ? error.message : "Server error",
+      },
       { status: 500 },
     );
   }

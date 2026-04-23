@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -33,6 +34,27 @@ export default async function AdminPage() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <p className="text-sm text-neutral-500">Admin</p>
         <h1 className="mt-3 text-4xl font-semibold">Vendor Controls</h1>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/admin/applications"
+            className="rounded-xl border px-5 py-3"
+          >
+            Applications
+          </Link>
+          <Link
+            href="/admin/leads"
+            className="rounded-xl border px-5 py-3"
+          >
+            Leads
+          </Link>
+          <Link
+            href="/admin/notifications"
+            className="rounded-xl border px-5 py-3"
+          >
+            Notification Queue
+          </Link>
+        </div>
 
         <div className="mt-10 space-y-4">
           {vendors?.map((vendor) => (
