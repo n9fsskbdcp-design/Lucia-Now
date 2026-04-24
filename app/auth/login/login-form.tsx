@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -78,39 +79,43 @@ export default function LoginForm() {
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
+          className="w-full rounded-2xl border px-4 py-4"
           required
         />
       </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium">Password</label>
-        <div className="flex gap-2">
+        <div className="relative">
           <input
             type={passwordType}
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border px-4 py-4"
+            className="w-full rounded-2xl border px-4 py-4 pr-14"
             required
           />
+
           <button
             type="button"
-            onClick={() => setShowPassword((s) => !s)}
-            className="rounded-xl border px-4"
+            onClick={() => setShowPassword((value) => !value)}
+            className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-neutral-50 text-neutral-500"
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? "Hide" : "Show"}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
       </div>
 
       {errorText ? (
-        <p className="text-sm text-red-600">{errorText}</p>
+        <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+          {errorText}
+        </div>
       ) : null}
 
       <button
         disabled={loading}
-        className="w-full rounded-xl bg-black py-4 text-white disabled:opacity-50"
+        className="w-full rounded-full bg-neutral-950 py-4 font-medium text-white disabled:opacity-50"
       >
         {loading ? "Logging in..." : "Login"}
       </button>
