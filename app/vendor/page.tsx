@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CalendarDays, ListChecks, Plus, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -24,10 +25,19 @@ function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
 
   return blackouts.some((blackout) => {
     if (blackout.experience_id !== slot.experience_id) return false;
+
     const blackoutStart = new Date(blackout.starts_at).getTime();
     const blackoutEnd = new Date(blackout.ends_at).getTime();
+
     return slotStart < blackoutEnd && slotEnd > blackoutStart;
   });
+}
+
+function badgeClass(label: string) {
+  if (label === "confirmed" || label === "paid_confirmed") return "bg-green-100 text-green-800";
+  if (label === "declined") return "bg-red-100 text-red-800";
+  if (label === "pending_payment" || label === "confirmed_pending_payment") return "bg-amber-100 text-amber-800";
+  return "bg-neutral-100 text-neutral-700";
 }
 
 export default async function VendorPage({
@@ -44,9 +54,7 @@ export default async function VendorPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/auth/login");
-  }
+  if (!user) redirect("/auth/login");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -54,9 +62,7 @@ export default async function VendorPage({
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "vendor" && profile?.role !== "admin") {
-    redirect("/");
-  }
+  if (profile?.role !== "vendor" && profile?.role !== "admin") redirect("/");
 
   const { data: vendor } = await supabaseAdmin
     .from("vendors")
@@ -64,16 +70,17 @@ export default async function VendorPage({
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
-  if (!vendor) {
-    redirect("/partners/status");
-  }
+  if (!vendor) redirect("/partners/status");
 
   const { data: experiences } = await supabaseAdmin
     .from("experiences")
     .select("*")
     .eq("vendor_id", vendor.id);
 
-  const experienceIds = (experiences ?? []).map((e) => e.id);
+  const experienceIds = (experiences ?? []).map((item) => item.id);
+  const safeIds = experienceIds.length
+    ? experienceIds
+    : ["00000000-0000-0000-0000-000000000000"];
 
   const { data: requests } = await supabaseAdmin
     .from("booking_requests")
@@ -89,10 +96,6 @@ export default async function VendorPage({
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: false });
 
-  const safeIds = experienceIds.length
-    ? experienceIds
-    : ["00000000-0000-0000-0000-000000000000"];
-
   const { data: slotsData } = await supabaseAdmin
     .from("availability_slots")
     .select("id, experience_id, status, starts_at, ends_at")
@@ -106,167 +109,155 @@ export default async function VendorPage({
   const slots = (slotsData ?? []) as SlotRow[];
   const blackouts = (blackoutData ?? []) as BlackoutRow[];
   const visibleSlots = slots.filter((slot) => !isBlocked(slot, blackouts));
+  const leads = requests ?? [];
 
-  const filteredRequests =
+  const filtered =
     selectedStatus === "all"
-      ? requests ?? []
-      : (requests ?? []).filter(
-          (r) => r.status === selectedStatus || r.contact_status === selectedStatus,
+      ? leads
+      : leads.filter(
+          (item) =>
+            item.status === selectedStatus ||
+            item.contact_status === selectedStatus,
         );
 
   const liveCount = (experiences ?? []).filter(
-    (e) => e.status === "published" && e.is_active,
+    (item) => item.status === "published" && item.is_active,
   ).length;
 
-  const openSlotsCount = visibleSlots.filter((s) => s.status === "open").length;
-  const newLeadsCount = (requests ?? []).filter((r) => r.status === "new").length;
+  const openSlotsCount = visibleSlots.filter((slot) => slot.status === "open").length;
+  const newLeadsCount = leads.filter((lead) => lead.status === "new").length;
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <p className="text-sm text-neutral-500">Vendor</p>
-        <h1 className="mt-3 text-4xl font-semibold">
-          Welcome back{profile?.full_name ? `, ${profile.full_name}` : ""}
-        </h1>
+    <main className="page-shell">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <p className="text-sm text-white/55">Partner workspace</p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/vendor/experiences"
-            className="rounded-xl bg-black px-5 py-3 text-white"
-          >
-            Manage Experiences
-          </Link>
-          <Link
-            href="/vendor/experiences/new"
-            className="rounded-xl border px-5 py-3"
-          >
-            Add Experience
-          </Link>
+          <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-4xl font-semibold tracking-tight">
+                {vendor.business_name || "Vendor dashboard"}
+              </h1>
+              <p className="mt-2 text-white/65">
+                Manage leads, availability, and listing performance.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/vendor/experiences"
+                className="inline-flex items-center rounded-full bg-white px-5 py-3 font-medium text-neutral-950"
+              >
+                <ListChecks className="mr-2" size={18} />
+                Experiences
+              </Link>
+              <Link
+                href="/vendor/experiences/new"
+                className="inline-flex items-center rounded-full bg-white/10 px-5 py-3 font-medium text-white ring-1 ring-white/15"
+              >
+                <Plus className="mr-2" size={18} />
+                Add
+              </Link>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-4">
-          <MetricCard label="Live Experiences" value={String(liveCount)} />
-          <MetricCard label="Booking Leads" value={String(requests?.length || 0)} />
-          <MetricCard label="New Leads" value={String(newLeadsCount)} />
-          <MetricCard label="Open Slots" value={String(openSlotsCount)} />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric icon={<Sparkles size={20} />} label="Live experiences" value={liveCount} />
+          <Metric icon={<ListChecks size={20} />} label="Booking leads" value={leads.length} />
+          <Metric icon={<ListChecks size={20} />} label="New leads" value={newLeadsCount} />
+          <Metric icon={<CalendarDays size={20} />} label="Open slots" value={openSlotsCount} />
         </div>
 
-        <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold">Recent booking leads</h2>
+        <section className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm text-neutral-500">Leads</p>
+              <h2 className="mt-1 text-2xl font-semibold">Booking requests</h2>
+            </div>
 
-            <div className="flex flex-wrap gap-2 text-sm">
-              <FilterLink label="All" value="all" current={selectedStatus} />
-              <FilterLink label="New" value="new" current={selectedStatus} />
-              <FilterLink label="Contacted" value="contacted" current={selectedStatus} />
-              <FilterLink label="Confirmed" value="confirmed" current={selectedStatus} />
-              <FilterLink label="Declined" value="declined" current={selectedStatus} />
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[
+                ["All", "all"],
+                ["New", "new"],
+                ["Contacted", "contacted"],
+                ["Awaiting payment", "confirmed_pending_payment"],
+                ["Confirmed", "confirmed"],
+                ["Declined", "declined"],
+              ].map(([label, value]) => (
+                <Link
+                  key={value}
+                  href={value === "all" ? "/vendor" : `/vendor?status=${value}`}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium ${
+                    selectedStatus === value
+                      ? "bg-neutral-950 text-white"
+                      : "bg-neutral-100 text-neutral-700"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
             </div>
           </div>
 
-          {filteredRequests.length === 0 ? (
-            <p className="mt-6 text-neutral-500">No leads for this filter.</p>
+          {filtered.length === 0 ? (
+            <div className="mt-6 rounded-3xl bg-neutral-50 p-8 text-center text-neutral-500">
+              No leads for this filter.
+            </div>
           ) : (
-            <div className="mt-6 space-y-4">
-              {filteredRequests.slice(0, 12).map((request) => (
+            <div className="mt-6 space-y-3">
+              {filtered.slice(0, 14).map((request) => (
                 <Link
                   key={request.id}
                   href={`/vendor/leads/${request.id}`}
-                  className="block rounded-2xl bg-neutral-50 p-5 transition hover:bg-neutral-100"
+                  className="block rounded-3xl bg-neutral-50 p-4 transition hover:bg-neutral-100 sm:p-5"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h3 className="text-lg font-semibold">
                         {request.experiences?.title || "Experience"}
                       </h3>
 
                       <p className="mt-2 text-sm text-neutral-500">
-                        {request.guest_name} · {request.guest_email}
-                      </p>
-
-                      <p className="mt-1 text-sm text-neutral-500">
-                        Guests: {request.guests}
+                        {request.guest_name} · {request.guests} guest
+                        {request.guests === 1 ? "" : "s"}
                       </p>
 
                       {request.requested_start_at ? (
                         <p className="mt-1 text-sm text-neutral-500">
-                          Requested slot:{" "}
                           {new Date(request.requested_start_at).toLocaleString()}
                         </p>
                       ) : null}
                     </div>
 
-                    <div className="space-y-2">
-                      <StatusBadge label={request.status} />
-                      <StatusBadge label={request.contact_status} subtle />
-                    </div>
+                    <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(request.contact_status)}`}>
+                      {request.contact_status}
+                    </span>
                   </div>
                 </Link>
               ))}
             </div>
           )}
-        </div>
+        </section>
       </section>
     </main>
   );
 }
 
-function MetricCard({
+function Metric({
+  icon,
   label,
   value,
 }: {
+  icon: React.ReactNode;
   label: string;
-  value: string;
+  value: number;
 }) {
   return (
-    <div className="rounded-3xl bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <p className="mt-3 text-4xl font-semibold">{value}</p>
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div className="text-neutral-500">{icon}</div>
+      <p className="mt-4 text-sm text-neutral-500">{label}</p>
+      <p className="mt-1 text-3xl font-semibold">{value}</p>
     </div>
-  );
-}
-
-function StatusBadge({
-  label,
-  subtle = false,
-}: {
-  label: string;
-  subtle?: boolean;
-}) {
-  const base = subtle
-    ? "bg-neutral-100 text-neutral-700"
-    : label === "new"
-      ? "bg-blue-100 text-blue-800"
-      : label === "confirmed"
-        ? "bg-green-100 text-green-800"
-        : label === "declined"
-          ? "bg-red-100 text-red-800"
-          : "bg-neutral-100 text-neutral-700";
-
-  return (
-    <div className={`rounded-full px-3 py-1 text-xs font-medium ${base}`}>
-      {label}
-    </div>
-  );
-}
-
-function FilterLink({
-  label,
-  value,
-  current,
-}: {
-  label: string;
-  value: string;
-  current: string;
-}) {
-  const active = value === current;
-
-  return (
-    <Link
-      href={value === "all" ? "/vendor" : `/vendor?status=${value}`}
-      className={`rounded-full px-4 py-2 ${active ? "bg-black text-white" : "bg-neutral-100 text-neutral-700"}`}
-    >
-      {label}
-    </Link>
   );
 }
