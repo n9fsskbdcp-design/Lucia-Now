@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type Message = {
   id: string;
   sender_role: string;
@@ -8,32 +10,58 @@ type Message = {
 export default function MessageThread({
   bookingId,
   messages,
+  compact = false,
 }: {
   bookingId: string;
   messages: Message[];
+  compact?: boolean;
 }) {
-  return (
-    <section className="rounded-3xl border-2 border-black bg-white p-8 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
-            In-app chat
-          </p>
+  const latest = messages.slice(-3);
 
-          <h2 className="mt-2 text-2xl font-semibold">
-            Messages about this booking
-          </h2>
+  if (compact) {
+    return (
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Messages</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              {messages.length} message{messages.length === 1 ? "" : "s"}
+            </p>
+          </div>
 
-          <p className="mt-2 text-sm text-neutral-600">
-            Tourist and vendor can message each other here. Messages stay attached
-            to this booking request.
-          </p>
+          <Link
+            href={`/messages/${bookingId}`}
+            className="rounded-xl bg-black px-4 py-2 text-sm text-white"
+          >
+            Open conversation
+          </Link>
         </div>
 
-        <span className="rounded-full bg-black px-4 py-2 text-sm text-white">
-          {messages.length} message{messages.length === 1 ? "" : "s"}
-        </span>
-      </div>
+        <div className="mt-5 space-y-3">
+          {latest.length === 0 ? (
+            <p className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-500">
+              No messages yet.
+            </p>
+          ) : (
+            latest.map((message) => (
+              <div key={message.id} className="rounded-2xl bg-neutral-50 p-4">
+                <p className="text-xs font-medium uppercase text-neutral-500">
+                  {message.sender_role}
+                </p>
+                <p className="mt-2 line-clamp-2 text-sm text-neutral-700">
+                  {message.message}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-3xl bg-white p-8 shadow-sm">
+      <h2 className="text-2xl font-semibold">Conversation</h2>
 
       <div className="mt-6 space-y-4">
         {messages.length === 0 ? (
@@ -82,13 +110,13 @@ export default function MessageThread({
         <textarea
           name="message"
           rows={4}
-          placeholder="Write a message to the other party..."
+          placeholder="Write a message..."
           className="w-full rounded-2xl border px-4 py-3"
           required
         />
 
         <button className="rounded-xl bg-black px-5 py-3 text-white">
-          Send in-app message
+          Send message
         </button>
       </form>
     </section>

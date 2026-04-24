@@ -8,18 +8,50 @@ import LogoutButton from "./logout-button";
 
 type Role = "guest" | "tourist" | "vendor" | "admin";
 
+function MessageLink({ count }: { count: number }) {
+  return (
+    <Link href="/messages" className="relative">
+      Messages
+      {count > 0 ? (
+        <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
+          {count}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function MobileMessageLink({ count }: { count: number }) {
+  return (
+    <Link
+      href="/messages"
+      className="rounded-full bg-neutral-100 px-4 py-2"
+    >
+      Messages
+      {count > 0 ? (
+        <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
+          {count}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 export default function NavbarClient({
   initialUser,
   initialRole,
+  initialUnreadMessages,
 }: {
   initialUser: boolean;
   initialRole: string;
+  initialUnreadMessages: number;
 }) {
   const router = useRouter();
   const supabase = createClient();
 
   const [hasUser, setHasUser] = useState(initialUser);
   const [role, setRole] = useState<Role>((initialRole as Role) || "guest");
+  const [unreadMessages, setUnreadMessages] = useState(initialUnreadMessages);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +67,7 @@ export default function NavbarClient({
 
       if (!user) {
         setRole("guest");
+        setUnreadMessages(0);
         return;
       }
 
@@ -98,6 +131,7 @@ export default function NavbarClient({
               <>
                 <Link href="/vendor/experiences">Dashboard</Link>
                 <Link href="/vendor">Leads</Link>
+                <MessageLink count={unreadMessages} />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -115,19 +149,15 @@ export default function NavbarClient({
                 <Link href="/admin/applications">Applications</Link>
                 <Link href="/admin/leads">Leads</Link>
                 <Link href="/admin/notifications">Notifications</Link>
+                <MessageLink count={unreadMessages} />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
-                <Link
-                  href="/experiences"
-                  className="rounded-xl bg-black px-5 py-3 text-white"
-                >
-                  {primaryLabel}
-                </Link>
               </>
             )}
 
             {hasUser && role === "tourist" && (
               <>
+                <MessageLink count={unreadMessages} />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -142,129 +172,72 @@ export default function NavbarClient({
         </div>
 
         <nav className="mt-4 flex flex-wrap gap-3 text-sm font-medium md:hidden">
-          <Link
-            href="/experiences"
-            className="rounded-full bg-neutral-100 px-4 py-2"
-          >
+          <Link href="/experiences" className="rounded-full bg-neutral-100 px-4 py-2">
             Experiences
           </Link>
 
           {!hasUser && (
             <>
-              <Link
-                href="/partners"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/partners" className="rounded-full bg-neutral-100 px-4 py-2">
                 Partner
               </Link>
-              <Link
-                href="/auth/login"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/auth/login" className="rounded-full bg-neutral-100 px-4 py-2">
                 Login
-              </Link>
-              <Link
-                href="/experiences"
-                className="rounded-full bg-black px-4 py-2 text-white"
-              >
-                {primaryLabel}
               </Link>
             </>
           )}
 
           {hasUser && role === "vendor" && (
             <>
-              <Link
-                href="/vendor/experiences"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/vendor/experiences" className="rounded-full bg-neutral-100 px-4 py-2">
                 Dashboard
               </Link>
-              <Link
-                href="/vendor"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/vendor" className="rounded-full bg-neutral-100 px-4 py-2">
                 Leads
               </Link>
-              <Link
-                href="/account"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <MobileMessageLink count={unreadMessages} />
+              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>
               <span className="rounded-full bg-neutral-100 px-4 py-2">
                 <LogoutButton />
               </span>
-              <Link
-                href="/experiences"
-                className="rounded-full bg-black px-4 py-2 text-white"
-              >
-                {primaryLabel}
-              </Link>
             </>
           )}
 
           {hasUser && role === "admin" && (
             <>
-              <Link
-                href="/admin"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/admin" className="rounded-full bg-neutral-100 px-4 py-2">
                 Dashboard
               </Link>
-              <Link
-                href="/admin/applications"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/admin/applications" className="rounded-full bg-neutral-100 px-4 py-2">
                 Applications
               </Link>
-              <Link
-                href="/admin/leads"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/admin/leads" className="rounded-full bg-neutral-100 px-4 py-2">
                 Leads
               </Link>
-              <Link
-                href="/admin/notifications"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <Link href="/admin/notifications" className="rounded-full bg-neutral-100 px-4 py-2">
                 Notifications
               </Link>
-              <Link
-                href="/account"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <MobileMessageLink count={unreadMessages} />
+              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>
               <span className="rounded-full bg-neutral-100 px-4 py-2">
                 <LogoutButton />
               </span>
-              <Link
-                href="/experiences"
-                className="rounded-full bg-black px-4 py-2 text-white"
-              >
-                {primaryLabel}
-              </Link>
             </>
           )}
 
           {hasUser && role === "tourist" && (
             <>
-              <Link
-                href="/account"
-                className="rounded-full bg-neutral-100 px-4 py-2"
-              >
+              <MobileMessageLink count={unreadMessages} />
+              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>
               <span className="rounded-full bg-neutral-100 px-4 py-2">
                 <LogoutButton />
               </span>
-              <Link
-                href="/experiences"
-                className="rounded-full bg-black px-4 py-2 text-white"
-              >
-                {primaryLabel}
-              </Link>
             </>
           )}
         </nav>

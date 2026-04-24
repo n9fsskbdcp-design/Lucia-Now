@@ -9,6 +9,7 @@ export async function POST(
   const { id } = await context.params;
 
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -21,7 +22,9 @@ export async function POST(
   const message = String(formData.get("message") || "").trim();
 
   if (!message) {
-    return NextResponse.redirect(new URL(request.headers.get("referer") || "/", request.url));
+    return NextResponse.redirect(
+      new URL(request.headers.get("referer") || "/", request.url),
+    );
   }
 
   const { data: profile } = await supabase
@@ -58,10 +61,21 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const senderRole =
+    role === "vendor" ? "vendor" : role === "admin" ? "admin" : "tourist";
+
+  const recipientRole =
+    senderRole === "tourist"
+      ? "vendor"
+      : senderRole === "vendor"
+        ? "tourist"
+        : "tourist";
+
   await supabaseAdmin.from("booking_messages").insert({
     booking_request_id: id,
     sender_id: user.id,
-    sender_role: role === "vendor" ? "vendor" : role === "admin" ? "admin" : "tourist",
+    sender_role: senderRole,
+    recipient_role: recipientRole,
     message,
   });
 
@@ -71,9 +85,12 @@ export async function POST(
     subject: "New booking message",
     payload: {
       booking_request_id: id,
-      sender_role: role,
+      sender_role: senderRole,
+      recipient_role: recipientRole,
     },
   });
 
-  return NextResponse.redirect(new URL(request.headers.get("referer") || "/", request.url));
+  return NextResponse.redirect(
+    new URL(request.headers.get("referer") || "/", request.url),
+  );
 }
