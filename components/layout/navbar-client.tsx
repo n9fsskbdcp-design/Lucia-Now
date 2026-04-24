@@ -2,50 +2,89 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Bell,
+  BriefcaseBusiness,
+  CalendarDays,
+  Compass,
+  LayoutDashboard,
+  LogIn,
+  Menu,
+  MessageCircle,
+  Search,
+  User,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import LogoutButton from "./logout-button";
 
 type Role = "guest" | "tourist" | "vendor" | "admin";
 
-function BadgeLink({
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[11px] font-semibold text-white">
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+function NavLink({
   href,
   label,
-  count,
+  active,
+  count = 0,
 }: {
   href: string;
   label: string;
-  count: number;
+  active: boolean;
+  count?: number;
 }) {
   return (
-    <Link href={href} className="relative">
+    <Link
+      href={href}
+      className={`rounded-full px-3.5 py-2 text-sm transition ${
+        active
+          ? "bg-neutral-950 text-white"
+          : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
+      }`}
+    >
       {label}
-      {count > 0 ? (
-        <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
-          {count}
-        </span>
-      ) : null}
+      <Badge count={count} />
     </Link>
   );
 }
 
-function MobileBadgeLink({
+function MobileLink({
   href,
   label,
-  count,
+  icon,
+  active,
+  count = 0,
+  onClick,
 }: {
   href: string;
   label: string;
-  count: number;
+  icon: React.ReactNode;
+  active: boolean;
+  count?: number;
+  onClick: () => void;
 }) {
   return (
-    <Link href={href} className="rounded-full bg-neutral-100 px-4 py-2">
-      {label}
-      {count > 0 ? (
-        <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
-          {count}
-        </span>
-      ) : null}
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`flex items-center justify-between rounded-2xl px-4 py-3 transition ${
+        active ? "bg-neutral-950 text-white" : "bg-neutral-50 text-neutral-800"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        {icon}
+        <span className="font-medium">{label}</span>
+      </span>
+      <Badge count={count} />
     </Link>
   );
 }
@@ -62,8 +101,10 @@ export default function NavbarClient({
   initialUnreadNotifications: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const [hasUser, setHasUser] = useState(initialUser);
   const [role, setRole] = useState<Role>((initialRole as Role) || "guest");
   const [unreadMessages, setUnreadMessages] = useState(initialUnreadMessages);
@@ -114,183 +155,303 @@ export default function NavbarClient({
     };
   }, [router, supabase]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
+
   const dashboardHref = useMemo(() => {
     if (role === "vendor") return "/vendor/experiences";
     if (role === "admin") return "/admin";
     return "/account";
   }, [role]);
 
-  const primaryLabel = role === "vendor" ? "Browse Experiences" : "Book Now";
-
   return (
-    <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-semibold tracking-tight">
-            Lucia Now
-          </Link>
+    <>
+      <header className="sticky top-0 z-50 border-b border-neutral-200/70 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="group flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white">
+                L
+              </span>
+              <span className="text-lg font-semibold tracking-tight text-neutral-950">
+                Lucia Now
+              </span>
+            </Link>
 
-          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
-            <Link href="/experiences">Experiences</Link>
+            <nav className="hidden items-center gap-1 rounded-full bg-neutral-50 p-1 lg:flex">
+              <NavLink
+                href="/experiences"
+                label="Experiences"
+                active={isActive("/experiences")}
+              />
 
-            {!hasUser && (
-              <>
-                <Link href="/partners">Become a Partner</Link>
-                <Link href="/auth/login">Login</Link>
-                <Link
-                  href="/experiences"
-                  className="rounded-xl bg-black px-5 py-3 text-white"
-                >
-                  {primaryLabel}
-                </Link>
-              </>
-            )}
+              {hasUser && role === "vendor" ? (
+                <>
+                  <NavLink
+                    href="/vendor/experiences"
+                    label="Dashboard"
+                    active={isActive("/vendor/experiences")}
+                  />
+                  <NavLink
+                    href="/vendor"
+                    label="Leads"
+                    active={pathname === "/vendor" || isActive("/vendor/leads")}
+                  />
+                </>
+              ) : null}
 
-            {hasUser && role === "vendor" && (
-              <>
-                <Link href="/vendor/experiences">Dashboard</Link>
-                <Link href="/vendor">Leads</Link>
-                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
-                <BadgeLink
-                  href="/notifications"
-                  label="Notifications"
-                  count={unreadNotifications}
+              {hasUser && role === "admin" ? (
+                <>
+                  <NavLink
+                    href="/admin"
+                    label="Admin"
+                    active={isActive("/admin")}
+                  />
+                  <NavLink
+                    href="/admin/leads"
+                    label="Leads"
+                    active={isActive("/admin/leads")}
+                  />
+                </>
+              ) : null}
+
+              {hasUser ? (
+                <>
+                  <NavLink
+                    href="/messages"
+                    label="Messages"
+                    active={isActive("/messages")}
+                    count={unreadMessages}
+                  />
+                  <NavLink
+                    href="/notifications"
+                    label="Alerts"
+                    active={isActive("/notifications")}
+                    count={unreadNotifications}
+                  />
+                  <NavLink
+                    href="/account"
+                    label="Account"
+                    active={isActive("/account")}
+                  />
+                </>
+              ) : (
+                <NavLink
+                  href="/partners"
+                  label="Partner"
+                  active={isActive("/partners")}
                 />
-                <Link href="/account">Account</Link>
-                <LogoutButton />
-                <Link
-                  href="/experiences"
-                  className="rounded-xl bg-black px-5 py-3 text-white"
-                >
-                  {primaryLabel}
-                </Link>
-              </>
-            )}
+              )}
+            </nav>
 
-            {hasUser && role === "admin" && (
-              <>
-                <Link href={dashboardHref}>Dashboard</Link>
-                <Link href="/admin/applications">Applications</Link>
-                <Link href="/admin/leads">Leads</Link>
-                <Link href="/admin/notifications">Queue</Link>
-                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
-                <BadgeLink
-                  href="/notifications"
-                  label="Notifications"
-                  count={unreadNotifications}
-                />
-                <Link href="/account">Account</Link>
-                <LogoutButton />
-              </>
-            )}
+            <div className="hidden items-center gap-3 lg:flex">
+              {!hasUser ? (
+                <>
+                  <Link
+                    href="/auth/login"
+                    className="rounded-full px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/experiences"
+                    className="rounded-full bg-neutral-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm"
+                  >
+                    Book now
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/experiences"
+                    className="rounded-full bg-neutral-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm"
+                  >
+                    Browse
+                  </Link>
+                  <LogoutButton />
+                </>
+              )}
+            </div>
 
-            {hasUser && role === "tourist" && (
-              <>
-                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
-                <BadgeLink
-                  href="/notifications"
-                  label="Notifications"
-                  count={unreadNotifications}
-                />
-                <Link href="/account">Account</Link>
-                <LogoutButton />
-                <Link
-                  href="/experiences"
-                  className="rounded-xl bg-black px-5 py-3 text-white"
-                >
-                  {primaryLabel}
-                </Link>
-              </>
-            )}
-          </nav>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-900 lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
         </div>
+      </header>
 
-        <nav className="mt-4 flex flex-wrap gap-3 text-sm font-medium md:hidden">
-          <Link href="/experiences" className="rounded-full bg-neutral-100 px-4 py-2">
-            Experiences
-          </Link>
+      {menuOpen ? (
+        <div className="fixed inset-0 z-[60] lg:hidden">
+          <button
+            type="button"
+            aria-label="Close menu overlay"
+            onClick={() => setMenuOpen(false)}
+            className="absolute inset-0 bg-black/30"
+          />
 
-          {!hasUser && (
-            <>
-              <Link href="/partners" className="rounded-full bg-neutral-100 px-4 py-2">
-                Partner
+          <aside className="absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <Link
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-neutral-950 text-sm font-semibold text-white">
+                  L
+                </span>
+                <span className="text-lg font-semibold">Lucia Now</span>
               </Link>
-              <Link href="/auth/login" className="rounded-full bg-neutral-100 px-4 py-2">
-                Login
-              </Link>
-            </>
-          )}
 
-          {hasUser && role === "vendor" && (
-            <>
-              <Link href="/vendor/experiences" className="rounded-full bg-neutral-100 px-4 py-2">
-                Dashboard
-              </Link>
-              <Link href="/vendor" className="rounded-full bg-neutral-100 px-4 py-2">
-                Leads
-              </Link>
-              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
-              <MobileBadgeLink
-                href="/notifications"
-                label="Notifications"
-                count={unreadNotifications}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-100"
+                aria-label="Close menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-3xl bg-neutral-950 p-5 text-white">
+              <p className="text-sm text-white/60">
+                {hasUser
+                  ? role === "vendor"
+                    ? "Partner workspace"
+                    : role === "admin"
+                      ? "Admin workspace"
+                      : "Traveler account"
+                  : "Explore trusted island experiences"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold">
+                {hasUser ? "Welcome back" : "Book Saint Lucia better"}
+              </p>
+            </div>
+
+            <nav className="mt-6 space-y-2">
+              <MobileLink
+                href="/experiences"
+                label="Experiences"
+                icon={<Compass size={18} />}
+                active={isActive("/experiences")}
+                onClick={() => setMenuOpen(false)}
               />
-              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
-                Account
-              </Link>
-              <span className="rounded-full bg-neutral-100 px-4 py-2">
-                <LogoutButton />
-              </span>
-            </>
-          )}
 
-          {hasUser && role === "admin" && (
-            <>
-              <Link href="/admin" className="rounded-full bg-neutral-100 px-4 py-2">
-                Dashboard
-              </Link>
-              <Link href="/admin/applications" className="rounded-full bg-neutral-100 px-4 py-2">
-                Applications
-              </Link>
-              <Link href="/admin/leads" className="rounded-full bg-neutral-100 px-4 py-2">
-                Leads
-              </Link>
-              <Link href="/admin/notifications" className="rounded-full bg-neutral-100 px-4 py-2">
-                Queue
-              </Link>
-              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
-              <MobileBadgeLink
-                href="/notifications"
-                label="Notifications"
-                count={unreadNotifications}
-              />
-              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
-                Account
-              </Link>
-              <span className="rounded-full bg-neutral-100 px-4 py-2">
-                <LogoutButton />
-              </span>
-            </>
-          )}
+              {!hasUser ? (
+                <>
+                  <MobileLink
+                    href="/partners"
+                    label="Become a Partner"
+                    icon={<BriefcaseBusiness size={18} />}
+                    active={isActive("/partners")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MobileLink
+                    href="/auth/login"
+                    label="Login"
+                    icon={<LogIn size={18} />}
+                    active={isActive("/auth/login")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                </>
+              ) : null}
 
-          {hasUser && role === "tourist" && (
-            <>
-              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
-              <MobileBadgeLink
-                href="/notifications"
-                label="Notifications"
-                count={unreadNotifications}
-              />
-              <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
-                Account
-              </Link>
-              <span className="rounded-full bg-neutral-100 px-4 py-2">
-                <LogoutButton />
-              </span>
-            </>
-          )}
-        </nav>
-      </div>
-    </header>
+              {hasUser && role === "vendor" ? (
+                <>
+                  <MobileLink
+                    href="/vendor/experiences"
+                    label="Dashboard"
+                    icon={<LayoutDashboard size={18} />}
+                    active={isActive("/vendor/experiences")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MobileLink
+                    href="/vendor"
+                    label="Leads"
+                    icon={<CalendarDays size={18} />}
+                    active={pathname === "/vendor" || isActive("/vendor/leads")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                </>
+              ) : null}
+
+              {hasUser && role === "admin" ? (
+                <>
+                  <MobileLink
+                    href="/admin"
+                    label="Admin"
+                    icon={<LayoutDashboard size={18} />}
+                    active={isActive("/admin")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MobileLink
+                    href="/admin/leads"
+                    label="Leads"
+                    icon={<CalendarDays size={18} />}
+                    active={isActive("/admin/leads")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                </>
+              ) : null}
+
+              {hasUser ? (
+                <>
+                  <MobileLink
+                    href="/messages"
+                    label="Messages"
+                    icon={<MessageCircle size={18} />}
+                    active={isActive("/messages")}
+                    count={unreadMessages}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MobileLink
+                    href="/notifications"
+                    label="Notifications"
+                    icon={<Bell size={18} />}
+                    active={isActive("/notifications")}
+                    count={unreadNotifications}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MobileLink
+                    href="/account"
+                    label="Account"
+                    icon={<User size={18} />}
+                    active={isActive("/account")}
+                    onClick={() => setMenuOpen(false)}
+                  />
+                </>
+              ) : null}
+            </nav>
+
+            <div className="mt-6 space-y-3">
+              {hasUser ? (
+                <div className="rounded-2xl bg-neutral-50 px-4 py-3">
+                  <LogoutButton />
+                </div>
+              ) : (
+                <Link
+                  href="/experiences"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center justify-center rounded-2xl bg-neutral-950 px-5 py-3 font-medium text-white"
+                >
+                  <Search className="mr-2" size={18} />
+                  Browse experiences
+                </Link>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </>
   );
 }
