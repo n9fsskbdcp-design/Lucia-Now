@@ -302,6 +302,7 @@ export default async function VendorLeadDetailPage(
                 created_at: string;
               }[]
             }
+            compact
           />
         </div>
       </section>

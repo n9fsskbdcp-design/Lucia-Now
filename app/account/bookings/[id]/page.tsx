@@ -169,6 +169,7 @@ export default async function AccountBookingDetailPage(
                 created_at: string;
               }[]
             }
+            compact
           />
         </div>
       </section>
