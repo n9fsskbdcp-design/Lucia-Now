@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CalendarDays, ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import AvailabilityManager from "@/components/vendor/availability-manager";
@@ -13,6 +14,7 @@ export default async function VendorAvailabilityPage(
   const { id } = await props.params;
 
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,31 +62,40 @@ export default async function VendorAvailabilityPage(
     .order("starts_at", { ascending: true });
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-neutral-500">Availability</p>
-            <h1 className="mt-2 text-4xl font-semibold">{experience.title}</h1>
-          </div>
+    <main className="page-shell">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+        <Link
+          href={`/vendor/experiences/${id}`}
+          className="mb-5 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm ring-1 ring-black/5"
+        >
+          <ChevronLeft className="mr-1" size={16} />
+          Back to listing
+        </Link>
 
-          <div className="flex gap-3">
-  <Link
-    href={`/vendor/experiences/${id}/calendar`}
-    className="rounded-xl border px-5 py-3"
-  >
-    Calendar view
-  </Link>
-  <Link
-    href={`/vendor/experiences/${id}`}
-    className="rounded-xl border px-5 py-3"
-  >
-    Back to listing
-  </Link>
-</div>
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <p className="text-sm text-white/55">Availability</p>
+
+          <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-4xl font-semibold tracking-tight">
+                {experience.title}
+              </h1>
+              <p className="mt-2 max-w-xl text-white/65">
+                Add bookable times, repeat schedules, and blackout dates.
+              </p>
+            </div>
+
+            <Link
+              href={`/vendor/experiences/${id}/calendar`}
+              className="inline-flex w-fit items-center rounded-full bg-white px-5 py-3 font-medium text-neutral-950"
+            >
+              <CalendarDays className="mr-2" size={18} />
+              Calendar view
+            </Link>
+          </div>
         </div>
 
-        <div className="space-y-8">
+        <div className="mt-6 space-y-6">
           <AvailabilityManager
             experienceId={id}
             slots={(slots ?? []) as {
