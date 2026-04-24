@@ -26,6 +26,8 @@ export default async function MessageConversationPage(
     .single();
 
   const role = profile?.role || "tourist";
+  const recipientRole =
+    role === "vendor" ? "vendor" : role === "admin" ? "admin" : "tourist";
 
   const { data: booking } = await supabaseAdmin
     .from("booking_requests")
@@ -61,7 +63,7 @@ export default async function MessageConversationPage(
     .from("booking_messages")
     .update({ read_at: new Date().toISOString() })
     .eq("booking_request_id", id)
-    .eq("recipient_role", role === "vendor" ? "vendor" : role === "admin" ? "admin" : "tourist")
+    .eq("recipient_role", recipientRole)
     .is("read_at", null);
 
   const { data: messages } = await supabaseAdmin
@@ -79,14 +81,20 @@ export default async function MessageConversationPage(
             <h1 className="mt-2 text-4xl font-semibold">
               {booking.experiences?.title || "Booking"}
             </h1>
+
+            <p className="mt-2 text-sm text-neutral-500">
+              {role === "tourist"
+                ? "Chat with the vendor about this request."
+                : `Chat with ${booking.guest_name}.`}
+            </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link href="/messages" className="rounded-xl border px-5 py-3">
               All messages
             </Link>
 
-            {role === "vendor" ? (
+            {role === "vendor" || role === "admin" ? (
               <Link
                 href={`/vendor/leads/${booking.id}`}
                 className="rounded-xl bg-black px-5 py-3 text-white"

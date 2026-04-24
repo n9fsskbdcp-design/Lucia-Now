@@ -21,7 +21,7 @@ export default function MessageThread({
   if (compact) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold">Messages</h2>
             <p className="mt-1 text-sm text-neutral-500">
