@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import MessageThread from "@/components/booking/message-thread";
@@ -14,11 +15,11 @@ function prettyStatus(label: string) {
 
 function actionMessage(status: string, paymentStatus: string) {
   if (status === "confirmed_pending_payment") {
-    return "You accepted this request. The traveler now needs to complete payment before the booking is secured.";
+    return "Accepted. The traveler needs to complete payment before the booking is secured.";
   }
 
   if (status === "paid_confirmed" && paymentStatus === "paid") {
-    return "This booking is paid and confirmed. Inventory has been deducted.";
+    return "Paid and confirmed. Inventory has been deducted.";
   }
 
   if (status === "declined") {
@@ -26,10 +27,10 @@ function actionMessage(status: string, paymentStatus: string) {
   }
 
   if (status === "contacted") {
-    return "This lead is marked as contacted. You can now accept it for payment or decline it.";
+    return "Marked as contacted. You can still accept for payment or decline.";
   }
 
-  return "Review this lead, message the traveler if needed, then accept for payment or decline.";
+  return "Review the request, message the traveler if needed, then accept or decline.";
 }
 
 export default async function VendorLeadDetailPage(
@@ -96,151 +97,112 @@ export default async function VendorLeadDetailPage(
     .order("created_at", { ascending: true });
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-neutral-500">Lead Detail</p>
-            <h1 className="mt-2 text-4xl font-semibold">
-              {lead.experiences?.title || "Booking lead"}
-            </h1>
+    <main className="page-shell">
+      <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
+        <Link
+          href="/vendor"
+          className="mb-5 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm ring-1 ring-black/5"
+        >
+          <ChevronLeft className="mr-1" size={16} />
+          Back to leads
+        </Link>
+
+        {searchParams.updated ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Lead updated: {prettyStatus(searchParams.updated)}
           </div>
+        ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Link href="/vendor" className="rounded-xl border px-5 py-3">
-              Back to leads
-            </Link>
+        {searchParams.notes === "saved" ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Vendor notes saved.
+          </div>
+        ) : null}
 
+        {searchParams.error ? (
+          <div className="mb-4 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
+            {searchParams.error}
+          </div>
+        ) : null}
+
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <p className="text-sm text-white/55">Lead detail</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+            {lead.experiences?.title || "Booking lead"}
+          </h1>
+          <p className="mt-3 text-white/70">
+            {actionMessage(lead.contact_status, lead.payment_status)}
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href={`/messages/${lead.id}`}
-              className="rounded-xl bg-black px-5 py-3 text-white"
+              className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-950"
             >
+              <MessageCircle className="mr-2" size={17} />
               Message traveler
             </Link>
 
             {lead.experiences?.slug ? (
               <Link
                 href={`/experiences/${lead.experiences.slug}`}
-                className="rounded-xl border px-5 py-3"
+                className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white ring-1 ring-white/15"
               >
-                View public page
+                Public page
               </Link>
             ) : null}
           </div>
         </div>
 
-        {searchParams.updated ? (
-          <div className="mb-6 rounded-2xl bg-green-50 p-4 text-green-800">
-            Lead updated: {prettyStatus(searchParams.updated)}
-          </div>
-        ) : null}
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+            <h2 className="text-2xl font-semibold">Traveler</h2>
 
-        {searchParams.notes === "saved" ? (
-          <div className="mb-6 rounded-2xl bg-green-50 p-4 text-green-800">
-            Vendor notes saved.
-          </div>
-        ) : null}
-
-        {searchParams.error ? (
-          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-red-700">
-            {searchParams.error}
-          </div>
-        ) : null}
-
-        <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-neutral-500">
-            Current state
-          </p>
-
-          <p className="mt-2 text-lg font-semibold">
-            {prettyStatus(lead.contact_status)}
-          </p>
-
-          <p className="mt-2 text-neutral-600">
-            {actionMessage(lead.contact_status, lead.payment_status)}
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Guest</h2>
-
-            <div className="mt-5 space-y-3 text-neutral-700">
-              <p>
-                <strong>Name:</strong> {lead.guest_name}
-              </p>
-
-              <p>
-                <strong>Email:</strong> {lead.guest_email}
-              </p>
-
-              <p>
-                <strong>Guests:</strong> {lead.guests}
-              </p>
+            <div className="mt-6 grid gap-3">
+              <Info label="Name" value={lead.guest_name} />
+              <Info label="Email" value={lead.guest_email} />
+              <Info label="Guests" value={String(lead.guests)} />
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={`/messages/${lead.id}`}
-                className="rounded-xl bg-black px-5 py-3 text-white"
-              >
-                Open conversation
-              </Link>
+            {lead.notes ? (
+              <div className="mt-4 rounded-3xl bg-neutral-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Guest notes
+                </p>
+                <p className="mt-2 text-sm leading-6 text-neutral-700">
+                  {lead.notes}
+                </p>
+              </div>
+            ) : null}
 
+            <div className="mt-5">
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="contacted" />
-                <button className="rounded-xl border px-5 py-3">
+                <button className="rounded-full bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-800">
                   Mark contacted
                 </button>
               </form>
             </div>
-
-            {lead.notes ? (
-              <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
-                <p className="text-sm font-medium">Guest notes</p>
-                <p className="mt-2 text-sm text-neutral-600">{lead.notes}</p>
-              </div>
-            ) : null}
           </div>
 
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-semibold">Booking</h2>
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+            <h2 className="text-2xl font-semibold">Decision</h2>
 
-            <div className="mt-5 space-y-3 text-neutral-700">
-              <p>
-                <strong>Status:</strong> {lead.status}
-              </p>
-
-              <p>
-                <strong>Contact status:</strong>{" "}
-                {prettyStatus(lead.contact_status)}
-              </p>
-
-              <p>
-                <strong>Payment:</strong> {lead.payment_status}
-              </p>
+            <div className="mt-6 grid gap-3">
+              <Info label="Status" value={prettyStatus(lead.contact_status)} />
+              <Info label="Payment" value={lead.payment_status} />
 
               {lead.requested_start_at ? (
-                <p>
-                  <strong>Requested slot:</strong>{" "}
-                  {new Date(lead.requested_start_at).toLocaleString()}
-                </p>
-              ) : null}
-
-              {lead.requested_end_at ? (
-                <p>
-                  <strong>Requested end:</strong>{" "}
-                  {new Date(lead.requested_end_at).toLocaleString()}
-                </p>
+                <Info
+                  label="Requested time"
+                  value={new Date(lead.requested_start_at).toLocaleString()}
+                />
               ) : null}
             </div>
 
-            <div className="mt-8 rounded-2xl bg-neutral-50 p-5">
-              <p className="font-medium">Decision</p>
-
-              <p className="mt-2 text-sm text-neutral-600">
-                Accepting sends the traveler to payment. Inventory is only
-                reduced after payment is completed.
+            <div className="mt-6 rounded-3xl bg-neutral-50 p-4">
+              <p className="text-sm leading-6 text-neutral-600">
+                Accepting sends the traveler to payment. Inventory is reduced only after payment.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -250,15 +212,15 @@ export default async function VendorLeadDetailPage(
                     name="contact_status"
                     value="confirmed_pending_payment"
                   />
-                  <button className="rounded-xl bg-black px-5 py-3 text-white">
+                  <button className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white">
                     Accept & request payment
                   </button>
                 </form>
 
                 <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                   <input type="hidden" name="contact_status" value="declined" />
-                  <button className="rounded-xl border px-5 py-3 text-red-600">
-                    Decline request
+                  <button className="rounded-full bg-white px-5 py-3 text-sm font-medium text-red-600 shadow-sm ring-1 ring-black/5">
+                    Decline
                   </button>
                 </form>
               </div>
@@ -267,28 +229,28 @@ export default async function VendorLeadDetailPage(
             <form
               action={`/api/vendor/leads/${lead.id}/notes`}
               method="post"
-              className="mt-8"
+              className="mt-6"
             >
               <label className="mb-2 block text-sm font-medium">
-                Vendor notes
+                Internal notes
               </label>
 
               <textarea
                 name="vendor_notes"
                 defaultValue={lead.vendor_notes || ""}
                 rows={5}
-                className="w-full rounded-2xl border px-4 py-3"
-                placeholder="Internal notes about this lead..."
+                className="w-full rounded-3xl border px-4 py-3 text-sm"
+                placeholder="Only visible to you..."
               />
 
-              <button className="mt-3 rounded-xl border px-5 py-3">
+              <button className="mt-3 rounded-full bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-800">
                 Save notes
               </button>
             </form>
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <MessageThread
             bookingId={lead.id}
             messages={
@@ -304,5 +266,16 @@ export default async function VendorLeadDetailPage(
         </div>
       </section>
     </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl bg-neutral-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        {label}
+      </p>
+      <p className="mt-1 break-words font-medium">{value}</p>
+    </div>
   );
 }

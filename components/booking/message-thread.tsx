@@ -20,35 +20,33 @@ export default function MessageThread({
 
   if (compact) {
     return (
-      <section className="rounded-3xl bg-white p-6 shadow-sm">
+      <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Messages</h2>
-            <p className="mt-1 text-sm text-neutral-500">
-              {messages.length} message{messages.length === 1 ? "" : "s"}
-            </p>
+            <p className="text-sm text-neutral-500">Conversation</p>
+            <h2 className="mt-1 text-xl font-semibold">Messages</h2>
           </div>
 
           <Link
             href={`/messages/${bookingId}`}
-            className="rounded-xl bg-black px-4 py-2 text-sm text-white"
+            className="rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white"
           >
-            Open conversation
+            Open chat
           </Link>
         </div>
 
         <div className="mt-5 space-y-3">
           {latest.length === 0 ? (
-            <p className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-500">
+            <p className="rounded-3xl bg-neutral-50 p-4 text-sm text-neutral-500">
               No messages yet.
             </p>
           ) : (
             latest.map((message) => (
-              <div key={message.id} className="rounded-2xl bg-neutral-50 p-4">
-                <p className="text-xs font-medium uppercase text-neutral-500">
+              <div key={message.id} className="rounded-3xl bg-neutral-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                   {message.sender_role}
                 </p>
-                <p className="mt-2 line-clamp-2 text-sm text-neutral-700">
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-700">
                   {message.message}
                 </p>
               </div>
@@ -60,64 +58,71 @@ export default function MessageThread({
   }
 
   return (
-    <section className="rounded-3xl bg-white p-8 shadow-sm">
-      <h2 className="text-2xl font-semibold">Conversation</h2>
+    <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+      <div>
+        <p className="text-sm text-neutral-500">Platform chat</p>
+        <h2 className="mt-1 text-2xl font-semibold">Conversation</h2>
+      </div>
 
       <div className="mt-6 space-y-4">
         {messages.length === 0 ? (
-          <div className="rounded-2xl bg-neutral-50 p-5 text-neutral-600">
+          <div className="rounded-3xl bg-neutral-50 p-5 text-sm text-neutral-500">
             No messages yet. Send the first message below.
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`rounded-2xl p-4 ${
-                message.sender_role === "vendor"
-                  ? "bg-black text-white"
-                  : "bg-neutral-100 text-neutral-900"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium capitalize">
-                  {message.sender_role}
-                </p>
+          messages.map((message) => {
+            const isVendor = message.sender_role === "vendor";
 
-                <p
-                  className={`text-xs ${
-                    message.sender_role === "vendor"
-                      ? "text-white/60"
-                      : "text-neutral-500"
+            return (
+              <div
+                key={message.id}
+                className={`flex ${isVendor ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[88%] rounded-[1.5rem] p-4 sm:max-w-[70%] ${
+                    isVendor
+                      ? "bg-neutral-950 text-white"
+                      : "bg-neutral-100 text-neutral-950"
                   }`}
                 >
-                  {new Date(message.created_at).toLocaleString()}
-                </p>
-              </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+                      {message.sender_role}
+                    </p>
 
-              <p className="mt-3 whitespace-pre-line text-sm">
-                {message.message}
-              </p>
-            </div>
-          ))
+                    <p className="text-xs opacity-60">
+                      {new Date(message.created_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <p className="mt-3 whitespace-pre-line text-sm leading-6">
+                    {message.message}
+                  </p>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
       <form
         action={`/api/bookings/${bookingId}/messages`}
         method="post"
-        className="mt-6 space-y-3"
+        className="mt-6 rounded-3xl bg-neutral-50 p-3"
       >
         <textarea
           name="message"
           rows={4}
           placeholder="Write a message..."
-          className="w-full rounded-2xl border px-4 py-3"
+          className="w-full resize-none rounded-2xl border-0 bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-black/5 focus:shadow-none"
           required
         />
 
-        <button className="rounded-xl bg-black px-5 py-3 text-white">
-          Send message
-        </button>
+        <div className="mt-3 flex justify-end">
+          <button className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white">
+            Send message
+          </button>
+        </div>
       </form>
     </section>
   );
