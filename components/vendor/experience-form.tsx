@@ -1,351 +1,317 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  experienceSchema,
-  ExperienceFormValues,
-} from "@/lib/validation/experience";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-type Props = {
-  mode: "create" | "edit";
-  experienceId?: string;
-  initialValues?: Partial<ExperienceFormValues>;
+type Mode = "create" | "edit";
+
+type InitialValues = {
+  title?: string;
+  slug?: string;
+  short_description?: string;
+  description?: string;
+  base_price?: number;
+  base_price_type?: string;
+  booking_mode?: string;
+  min_guests?: number;
+  max_guests?: number | null;
+  status?: string;
+  is_active?: boolean;
 };
 
 export default function ExperienceForm({
   mode,
   experienceId,
   initialValues,
-}: Props) {
+}: {
+  mode: Mode;
+  experienceId?: string;
+  initialValues?: InitialValues;
+}) {
   const router = useRouter();
-  const [serverError, setServerError] = useState("");
 
-  const {
-    register,
-    watch,
-    setValue,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<ExperienceFormValues>({
-    resolver: zodResolver(experienceSchema),
-    defaultValues: {
-      title: "",
-      subtitle: "",
-      short_description: "",
-      description: "",
-      booking_mode: "instant",
-      duration_minutes: 180,
-      cutoff_minutes: 120,
-      min_guests: 1,
-      max_guests: 8,
-      base_price: 150,
-      base_currency: "USD",
-      base_price_type: "per_person",
-      category_id: null,
-      primary_location_id: null,
-      status: "draft",
-      is_active: false,
-      ...initialValues,
-    },
-  });
+  const [title, setTitle] = useState(initialValues?.title || "");
+  const [slug, setSlug] = useState(initialValues?.slug || "");
+  const [shortDescription, setShortDescription] = useState(
+    initialValues?.short_description || "",
+  );
+  const [description, setDescription] = useState(initialValues?.description || "");
+  const [basePrice, setBasePrice] = useState(String(initialValues?.base_price || ""));
+  const [basePriceType, setBasePriceType] = useState(
+    initialValues?.base_price_type || "per_person",
+  );
+  const [bookingMode, setBookingMode] = useState(
+    initialValues?.booking_mode || "request",
+  );
+  const [minGuests, setMinGuests] = useState(String(initialValues?.min_guests || 1));
+  const [maxGuests, setMaxGuests] = useState(
+    initialValues?.max_guests ? String(initialValues.max_guests) : "",
+  );
+  const [status, setStatus] = useState(initialValues?.status || "draft");
+  const [isActive, setIsActive] = useState(Boolean(initialValues?.is_active));
+  const [loading, setLoading] = useState(false);
 
-  const title = watch("title");
-  const price = watch("base_price");
-  const status = watch("status");
+  function makeSlug(value: string) {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
 
-  async function submit(values: ExperienceFormValues) {
-    setServerError("");
+  function updateTitle(value: string) {
+    setTitle(value);
 
-    const endpoint =
-      mode === "create"
-        ? "/api/vendor/experiences"
-        : `/api/vendor/experiences/${experienceId}`;
+    if (mode === "create" || !slug) {
+      setSlug(makeSlug(value));
+    }
+  }
 
-    const method = mode === "create" ? "POST" : "PATCH";
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
 
-    const res = await fetch(endpoint, {
+    const payload = {
+      title,
+      slug,
+      short_description: shortDescription,
+      description,
+      base_price: Number(basePrice),
+      base_price_type: basePriceType,
+      booking_mode: bookingMode,
+      min_guests: Number(minGuests),
+      max_guests: maxGuests ? Number(maxGuests) : null,
+      status,
+      is_active: isActive,
+    };
+
+    const url =
+      mode === "edit" && experienceId
+        ? `/api/vendor/experiences/${experienceId}`
+        : "/api/vendor/experiences";
+
+    const method = mode === "edit" ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
+    setLoading(false);
 
     if (!res.ok) {
-      setServerError(data.error || "Unable to save");
-      toast.error("Unable to save listing");
+      toast.error(data.error || "Could not save experience");
       return;
     }
+
+    toast.success(mode === "edit" ? "Experience updated" : "Experience created");
 
     if (mode === "create") {
-      toast.success("Experience created");
       router.push(`/vendor/experiences/${data.id}`);
-      return;
+    } else {
+      router.refresh();
     }
-
-    toast.success("Changes saved");
-    router.push("/vendor/experiences");
-  }
-
-  function publish() {
-    setValue("status", "published");
-    setValue("is_active", true);
-  }
-
-  function draft() {
-    setValue("status", "draft");
-    setValue("is_active", false);
-  }
-
-  function pause() {
-    setValue("status", "paused");
-    setValue("is_active", false);
-  }
-
-  function archive() {
-    setValue("status", "archived");
-    setValue("is_active", false);
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(submit)}
-      className="grid gap-8 lg:grid-cols-[1fr_340px]"
-    >
-      {/* LEFT */}
-      <div className="space-y-6">
-        <Section title="Experience Details">
-          <Input label="Title" register={register("title")} />
-          <Input
-            label="Tagline"
-            register={register("subtitle")}
+    <form onSubmit={submit} className="space-y-8">
+      <section>
+        <p className="text-sm font-medium text-neutral-500">Basics</p>
+        <h2 className="mt-1 text-2xl font-semibold">Listing details</h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-600">
+          Keep the title clear, searchable, and easy for travelers to understand.
+        </p>
+
+        <div className="mt-5 grid gap-4">
+          <Field
+            label="Experience title"
+            value={title}
+            setValue={updateTitle}
+            placeholder="Private airport transfer"
+            required
           />
 
-          <Textarea
-            label="Short Description"
-            rows={3}
-            register={register("short_description")}
+          <Field
+            label="URL slug"
+            value={slug}
+            setValue={setSlug}
+            placeholder="private-airport-transfer"
+            required
           />
 
-          <Textarea
-            label="Full Description"
-            rows={7}
-            register={register("description")}
-          />
-        </Section>
-
-        <Section title="Pricing">
-          <Grid2>
-            <Input
-              label="Starting Price (USD)"
-              type="number"
-              register={register("base_price", {
-                valueAsNumber: true,
-              })}
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Short description
+            </label>
+            <textarea
+              value={shortDescription}
+              onChange={(e) => setShortDescription(e.target.value)}
+              rows={3}
+              placeholder="A short summary shown on cards and search results..."
+              className="w-full rounded-3xl border px-4 py-4 text-sm leading-6"
+              required
             />
+          </div>
 
-            <Select
-              label="Charge Type"
-              register={register("base_price_type")}
-              options={[
-                ["per_person", "Per Person"],
-                ["per_group", "Per Group"],
-              ]}
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Full description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={8}
+              placeholder="Describe the experience, pickup details, what is included, and what guests should know..."
+              className="w-full rounded-3xl border px-4 py-4 text-sm leading-6"
+              required
             />
-          </Grid2>
-        </Section>
+          </div>
+        </div>
+      </section>
 
-        <Section title="Booking Setup">
-          <Grid2>
-            <Select
-              label="Booking Type"
-              register={register("booking_mode")}
-              options={[
-                ["instant", "Instant Booking"],
-                ["request", "Request Approval"],
-              ]}
-            />
+      <section className="rounded-3xl bg-neutral-50 p-5">
+        <p className="text-sm font-medium text-neutral-500">Pricing</p>
+        <h2 className="mt-1 text-xl font-semibold">Booking setup</h2>
 
-            <Input
-              label="Duration (mins)"
-              type="number"
-              register={register("duration_minutes", {
-                valueAsNumber: true,
-              })}
-            />
-          </Grid2>
-
-          <Input
-            label="Latest Booking Cutoff (mins)"
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Base price"
+            value={basePrice}
+            setValue={setBasePrice}
+            placeholder="120"
             type="number"
-            register={register("cutoff_minutes", {
-              valueAsNumber: true,
-            })}
+            required
           />
-        </Section>
 
-        <Section title="Guest Capacity">
-          <Grid2>
-            <Input
-              label="Minimum Guests"
+          <Select
+            label="Price type"
+            value={basePriceType}
+            setValue={setBasePriceType}
+            options={[
+              ["per_person", "Per person"],
+              ["per_group", "Per group"],
+            ]}
+          />
+
+          <Select
+            label="Booking mode"
+            value={bookingMode}
+            setValue={setBookingMode}
+            options={[
+              ["request", "Request to book"],
+              ["instant", "Instant book"],
+            ]}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Min guests"
+              value={minGuests}
+              setValue={setMinGuests}
+              placeholder="1"
               type="number"
-              register={register("min_guests", {
-                valueAsNumber: true,
-              })}
+              required
             />
 
-            <Input
-              label="Maximum Guests"
+            <Field
+              label="Max guests"
+              value={maxGuests}
+              setValue={setMaxGuests}
+              placeholder="Optional"
               type="number"
-              register={register("max_guests", {
-                valueAsNumber: true,
-              })}
             />
-          </Grid2>
-        </Section>
-      </div>
-
-      {/* RIGHT */}
-      <aside className="h-fit rounded-2xl border bg-white p-6 shadow-sm lg:sticky lg:top-24">
-        <h2 className="text-lg font-semibold">
-          Listing Control
-        </h2>
-
-        <div className="mt-5 rounded-xl bg-neutral-50 p-4 text-sm">
-          <p>
-            <strong>Title:</strong>{" "}
-            {title || "Untitled"}
-          </p>
-
-          <p className="mt-2">
-            <strong>Status:</strong> {status}
-          </p>
-
-          <p className="mt-2">
-            <strong>Price:</strong> USD ${price || 0}
-          </p>
+          </div>
         </div>
+      </section>
 
-        <div className="mt-5 space-y-3">
-          <button
-            type="button"
-            onClick={draft}
-            className="w-full rounded-xl border px-4 py-3"
-          >
-            Draft
-          </button>
+      <section className="rounded-3xl bg-neutral-50 p-5">
+        <p className="text-sm font-medium text-neutral-500">Visibility</p>
+        <h2 className="mt-1 text-xl font-semibold">Marketplace status</h2>
 
-          <button
-            type="button"
-            onClick={publish}
-            className="w-full rounded-xl bg-black px-4 py-3 text-white"
-          >
-            Publish
-          </button>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Select
+            label="Status"
+            value={status}
+            setValue={setStatus}
+            options={[
+              ["draft", "Draft"],
+              ["published", "Published"],
+              ["archived", "Archived"],
+            ]}
+          />
 
-          <button
-            type="button"
-            onClick={pause}
-            className="w-full rounded-xl border px-4 py-3"
-          >
-            Pause
-          </button>
+          <label className="flex items-center justify-between rounded-3xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <div>
+              <p className="text-sm font-medium">Active listing</p>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Active and published listings can appear publicly.
+              </p>
+            </div>
 
-          <button
-            type="button"
-            onClick={archive}
-            className="w-full rounded-xl border px-4 py-3 text-red-600"
-          >
-            Archive
-          </button>
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="h-5 w-5"
+            />
+          </label>
         </div>
+      </section>
 
-        {serverError && (
-          <p className="mt-4 text-sm text-red-600">
-            {serverError}
-          </p>
-        )}
-
-        {Object.keys(errors).length > 0 && (
-          <p className="mt-4 text-sm text-red-600">
-            Please review required fields.
-          </p>
-        )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="rounded-full bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-800"
+        >
+          Cancel
+        </button>
 
         <button
-          disabled={isSubmitting}
-          className="mt-6 w-full rounded-xl bg-emerald-600 px-5 py-4 text-white"
+          disabled={loading}
+          className="rounded-full bg-neutral-950 px-6 py-3 text-sm font-medium text-white disabled:opacity-50"
         >
-          {isSubmitting
+          {loading
             ? "Saving..."
-            : mode === "create"
-            ? "Create Experience"
-            : "Save Changes"}
+            : mode === "edit"
+              ? "Save changes"
+              : "Create experience"}
         </button>
-      </aside>
+      </div>
     </form>
   );
 }
 
-/* UI HELPERS */
-
-function Section({
-  title,
-  children,
-}: any) {
-  return (
-    <section className="rounded-2xl border bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
-}
-
-function Grid2({ children }: any) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {children}
-    </div>
-  );
-}
-
-function Input({
+function Field({
   label,
-  register,
+  value,
+  setValue,
+  placeholder,
   type = "text",
-}: any) {
+  required = false,
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  required?: boolean;
+}) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium">
-        {label}
-      </label>
+      <label className="mb-2 block text-sm font-medium">{label}</label>
       <input
         type={type}
-        {...register}
-        className="w-full rounded-xl border p-3"
-      />
-    </div>
-  );
-}
-
-function Textarea({
-  label,
-  register,
-  rows,
-}: any) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        {label}
-      </label>
-      <textarea
-        rows={rows}
-        {...register}
-        className="w-full rounded-xl border p-3"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className="w-full rounded-2xl border px-4 py-4"
       />
     </div>
   );
@@ -353,21 +319,26 @@ function Textarea({
 
 function Select({
   label,
-  register,
+  value,
+  setValue,
   options,
-}: any) {
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  options: [string, string][];
+}) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium">
-        {label}
-      </label>
+      <label className="mb-2 block text-sm font-medium">{label}</label>
       <select
-        {...register}
-        className="w-full rounded-xl border p-3"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-full rounded-2xl border px-4 py-4"
       >
-        {options.map(([v, l]: any) => (
-          <option key={v} value={v}>
-            {l}
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
           </option>
         ))}
       </select>

@@ -2,56 +2,34 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-
-const options = [
-  "Boat Trips",
-  "Island Tours",
-  "Private Drivers",
-  "Airport Transfers",
-  "Snorkeling",
-  "Sunset Cruises",
-];
 
 export default function PartnerApplicationForm() {
-  const router = useRouter();
-
-  const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [experienceTypes, setExperienceTypes] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function toggleType(value: string) {
-    setExperienceTypes((prev) =>
-      prev.includes(value)
-        ? prev.filter((x) => x !== value)
-        : [...prev, value],
-    );
-  }
-
-  async function onSubmit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
-    const res = await fetch("/api/vendor/apply", {
+    const res = await fetch("/api/partners/apply", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        full_name: fullName,
         business_name: businessName,
+        contact_name: contactName,
         email,
         phone,
+        business_type: businessType,
+        description,
         website,
-        instagram,
-        experience_types: experienceTypes,
-        notes,
       }),
     });
 
@@ -64,105 +42,131 @@ export default function PartnerApplicationForm() {
     }
 
     toast.success("Application submitted");
-    router.push("/partners?submitted=1");
+    setBusinessName("");
+    setContactName("");
+    setEmail("");
+    setPhone("");
+    setBusinessType("");
+    setDescription("");
+    setWebsite("");
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <input
-          type="text"
-          placeholder="Full name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
-          required
-        />
+    <form onSubmit={submit} className="mt-8 space-y-4">
+      <Field
+        label="Business name"
+        value={businessName}
+        setValue={setBusinessName}
+        placeholder="Example: Island Luxury Tours"
+        required
+      />
 
-        <input
-          type="text"
-          placeholder="Business name"
-          value={businessName}
-          onChange={(e) => setBusinessName(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
-          required
-        />
+      <Field
+        label="Contact name"
+        value={contactName}
+        setValue={setContactName}
+        placeholder="Your full name"
+        required
+      />
 
-        <input
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Email"
           type="email"
-          placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
+          setValue={setEmail}
+          placeholder="you@example.com"
           required
         />
 
-        <input
-          type="text"
-          placeholder="Phone"
+        <Field
+          label="Phone"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
-        />
-
-        <input
-          type="text"
-          placeholder="Website"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
-        />
-
-        <input
-          type="text"
-          placeholder="Instagram"
-          value={instagram}
-          onChange={(e) => setInstagram(e.target.value)}
-          className="w-full rounded-xl border px-4 py-4"
+          setValue={setPhone}
+          placeholder="+1 758..."
         />
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium text-neutral-700">
-          What do you offer?
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          {options.map((option) => {
-            const active = experienceTypes.includes(option);
-
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => toggleType(option)}
-                className={`rounded-full px-4 py-2 text-sm ${
-                  active
-                    ? "bg-black text-white"
-                    : "bg-neutral-100 text-neutral-800"
-                }`}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
+        <label className="mb-2 block text-sm font-medium">Business type</label>
+        <select
+          value={businessType}
+          onChange={(e) => setBusinessType(e.target.value)}
+          className="w-full rounded-2xl border px-4 py-4"
+          required
+        >
+          <option value="">Select type</option>
+          <option value="tour_operator">Tour operator</option>
+          <option value="boat_operator">Boat operator</option>
+          <option value="driver_transport">Driver / transport</option>
+          <option value="wellness">Wellness</option>
+          <option value="restaurant">Restaurant / hospitality</option>
+          <option value="other">Other</option>
+        </select>
       </div>
 
-      <textarea
-        placeholder="Tell us about your business, service area, fleet, guides, availability, and what makes your offering special."
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        rows={6}
-        className="w-full rounded-xl border px-4 py-4"
+      <Field
+        label="Website or social link"
+        value={website}
+        setValue={setWebsite}
+        placeholder="Instagram, website, or booking page"
       />
+
+      <div>
+        <label className="mb-2 block text-sm font-medium">
+          What do you offer?
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={5}
+          placeholder="Describe your experiences, services, and ideal guests..."
+          className="w-full rounded-3xl border px-4 py-4 text-sm leading-6"
+          required
+        />
+      </div>
 
       <button
         disabled={loading}
-        className="w-full rounded-xl bg-black py-4 text-white disabled:opacity-50"
+        className="w-full rounded-full bg-neutral-950 py-4 font-medium text-white disabled:opacity-50"
       >
-        {loading ? "Submitting..." : "Submit Partner Application"}
+        {loading ? "Submitting..." : "Submit application"}
       </button>
+
+      <p className="text-center text-xs leading-5 text-neutral-500">
+        Submitting an application does not automatically make your listing live.
+        Admin approval is required.
+      </p>
     </form>
+  );
+}
+
+function Field({
+  label,
+  value,
+  setValue,
+  placeholder,
+  type = "text",
+  required = false,
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border px-4 py-4"
+        required={required}
+      />
+    </div>
   );
 }

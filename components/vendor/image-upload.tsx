@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ImageUpload({
@@ -9,70 +9,92 @@ export default function ImageUpload({
 }: {
   experienceId: string;
 }) {
+  const [imageUrl, setImageUrl] = useState("");
+  const [altText, setAltText] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleUpload(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const supabase = createClient();
-
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
     setLoading(true);
 
-    const filePath = `${experienceId}/${Date.now()}-${file.name}`;
+    const res = await fetch(`/api/vendor/experiences/${experienceId}/images`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: imageUrl,
+        alt_text: altText || null,
+      }),
+    });
 
-    const { error } = await supabase.storage
-      .from("experience-images")
-      .upload(filePath, file);
+    const data = await res.json();
+    setLoading(false);
 
-    if (error) {
-      toast.error("Upload failed");
-      setLoading(false);
+    if (!res.ok) {
+      toast.error(data.error || "Could not add image");
       return;
     }
 
-    const { data } = supabase.storage
-      .from("experience-images")
-      .getPublicUrl(filePath);
-
-    await fetch(
-      `/api/vendor/experiences/${experienceId}/images`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image_url: data.publicUrl,
-        }),
-      }
-    );
-
-    toast.success("Image uploaded");
-    location.reload();
+    toast.success("Image added");
+    setImageUrl("");
+    setAltText("");
+    window.location.reload();
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">
-        Experience Images
-      </h2>
+    <form onSubmit={submit} className="space-y-4">
+      <div className="rounded-3xl bg-neutral-50 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+            <ImagePlus size={20} />
+          </div>
 
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleUpload}
+          <div>
+            <p className="font-medium">Add image by URL</p>
+            <p className="mt-1 text-sm leading-6 text-neutral-500">
+              Use a high-quality landscape image. Upload storage can be added later.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium">Image URL</label>
+        <input
+          type="url"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="https://..."
+          className="w-full rounded-2xl border px-4 py-4"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium">Alt text</label>
+        <input
+          type="text"
+          value={altText}
+          onChange={(e) => setAltText(e.target.value)}
+          placeholder="Describe the image"
+          className="w-full rounded-2xl border px-4 py-4"
+        />
+      </div>
+
+      <button
         disabled={loading}
-        className="mt-4 block w-full"
-      />
-
-      {loading && (
-        <p className="mt-3 text-sm text-neutral-500">
-          Uploading...
-        </p>
-      )}
-    </div>
+        className="inline-flex w-full items-center justify-center rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 animate-spin" size={16} />
+            Adding...
+          </>
+        ) : (
+          "Add image"
+        )}
+      </button>
+    </form>
   );
 }
