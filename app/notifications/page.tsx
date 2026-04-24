@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -33,7 +34,10 @@ export default async function NotificationsPage() {
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    query = query.eq("vendor_id", vendor?.id || "00000000-0000-0000-0000-000000000000");
+    query = query.eq(
+      "vendor_id",
+      vendor?.id || "00000000-0000-0000-0000-000000000000",
+    );
   } else {
     query = query.eq("user_id", user.id);
   }
@@ -52,16 +56,21 @@ export default async function NotificationsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-4xl font-semibold">Notifications</h1>
-        <p className="mt-3 text-neutral-600">
-          Platform updates about bookings, payments, and messages.
-        </p>
+    <main className="page-shell">
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <Bell size={28} className="text-white/70" />
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight">
+            Notifications
+          </h1>
+          <p className="mt-3 max-w-xl text-white/65">
+            Booking updates, payment prompts, and important platform alerts.
+          </p>
+        </div>
 
-        <div className="mt-10 space-y-4">
+        <div className="mt-6 space-y-3">
           {(notifications ?? []).length === 0 ? (
-            <div className="rounded-3xl bg-white p-8 text-neutral-500 shadow-sm">
+            <div className="rounded-[2rem] bg-white p-8 text-center text-neutral-500 shadow-sm ring-1 ring-black/5">
               No notifications yet.
             </div>
           ) : (
@@ -69,28 +78,34 @@ export default async function NotificationsPage() {
               <Link
                 key={item.id}
                 href={item.href || "/notifications"}
-                className="block rounded-3xl bg-white p-6 shadow-sm transition hover:bg-neutral-100"
+                className="block rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-black/5 transition hover:bg-neutral-50"
               >
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
+                <div className="flex gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+                    <Bell size={20} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
                       <h2 className="text-lg font-semibold">{item.title}</h2>
 
                       {!item.read_at ? (
-                        <span className="rounded-full bg-black px-3 py-1 text-xs text-white">
+                        <span className="shrink-0 rounded-full bg-neutral-950 px-3 py-1 text-xs font-semibold text-white">
                           New
                         </span>
                       ) : null}
                     </div>
 
                     {item.body ? (
-                      <p className="mt-2 text-sm text-neutral-600">{item.body}</p>
+                      <p className="mt-2 text-sm leading-6 text-neutral-600">
+                        {item.body}
+                      </p>
                     ) : null}
-                  </div>
 
-                  <p className="text-xs text-neutral-500">
-                    {new Date(item.created_at).toLocaleString()}
-                  </p>
+                    <p className="mt-3 text-xs text-neutral-400">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </Link>
             ))

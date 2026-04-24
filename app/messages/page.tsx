@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -88,10 +89,7 @@ export default async function MessagesPage() {
       latestByBooking.set(message.booking_request_id, message);
     }
 
-    if (
-      message.recipient_role === recipientRole &&
-      message.read_at === null
-    ) {
+    if (message.recipient_role === recipientRole && message.read_at === null) {
       unreadByBooking.set(
         message.booking_request_id,
         (unreadByBooking.get(message.booking_request_id) || 0) + 1,
@@ -106,17 +104,25 @@ export default async function MessagesPage() {
   });
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <h1 className="text-4xl font-semibold">Messages</h1>
-        <p className="mt-3 text-neutral-600">
-          Conversations connected to booking requests.
-        </p>
+    <main className="page-shell">
+      <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <MessageCircle size={28} className="text-white/70" />
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight">
+            Messages
+          </h1>
+          <p className="mt-3 max-w-xl text-white/65">
+            Keep every traveler and partner conversation attached to the booking.
+          </p>
+        </div>
 
-        <div className="mt-10 space-y-4">
+        <div className="mt-6 space-y-3">
           {sortedBookings.length === 0 ? (
-            <div className="rounded-3xl bg-white p-8 text-neutral-500 shadow-sm">
-              No message conversations yet.
+            <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
+              <p className="font-medium">No conversations yet</p>
+              <p className="mt-2 text-sm text-neutral-500">
+                Messages appear after a booking request is created.
+              </p>
             </div>
           ) : (
             sortedBookings.map((booking: any) => {
@@ -127,50 +133,45 @@ export default async function MessagesPage() {
                 <Link
                   key={booking.id}
                   href={`/messages/${booking.id}`}
-                  className="block rounded-3xl bg-white p-6 shadow-sm transition hover:bg-neutral-100"
+                  className="block rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-black/5 transition hover:bg-neutral-50"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-xl font-semibold">
-                          {booking.experiences?.title || "Booking conversation"}
-                        </h2>
+                  <div className="flex gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+                      <MessageCircle size={20} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-lg font-semibold">
+                            {booking.experiences?.title || "Booking conversation"}
+                          </h2>
+                          <p className="mt-1 truncate text-sm text-neutral-500">
+                            {role === "tourist"
+                              ? "Vendor conversation"
+                              : `${booking.guest_name} · ${booking.guest_email}`}
+                          </p>
+                        </div>
 
                         {unread > 0 ? (
-                          <span className="rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
-                            {unread} new
+                          <span className="shrink-0 rounded-full bg-neutral-950 px-3 py-1 text-xs font-semibold text-white">
+                            {unread}
                           </span>
                         ) : null}
                       </div>
 
-                      <p className="mt-2 text-sm text-neutral-500">
-                        {role === "tourist"
-                          ? "Vendor conversation"
-                          : `${booking.guest_name} · ${booking.guest_email}`}
-                      </p>
-
-                      {booking.requested_start_at ? (
-                        <p className="mt-1 text-sm text-neutral-500">
-                          {new Date(booking.requested_start_at).toLocaleString()}
-                        </p>
-                      ) : null}
-
                       {latest ? (
-                        <p className="mt-4 line-clamp-2 text-sm text-neutral-700">
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-neutral-700">
                           <span className="font-medium capitalize">
                             {latest.sender_role}:
                           </span>{" "}
                           {latest.message}
                         </p>
                       ) : (
-                        <p className="mt-4 text-sm text-neutral-500">
+                        <p className="mt-3 text-sm text-neutral-500">
                           No messages yet.
                         </p>
                       )}
-                    </div>
-
-                    <div className="rounded-full bg-neutral-100 px-3 py-1 text-xs">
-                      {booking.contact_status}
                     </div>
                   </div>
                 </Link>

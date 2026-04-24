@@ -24,6 +24,7 @@ function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
   return blackouts.some((blackout) => {
     const blackoutStart = new Date(blackout.starts_at).getTime();
     const blackoutEnd = new Date(blackout.ends_at).getTime();
+
     return slotStart < blackoutEnd && slotEnd > blackoutStart;
   });
 }
@@ -69,7 +70,6 @@ export default async function BookPage(
     .eq("experience_id", item.id);
 
   const blackouts = (blackoutData ?? []) as BlackoutRow[];
-
   let selectedSlot: SlotRow | null = null;
 
   if (slot) {
@@ -85,52 +85,61 @@ export default async function BookPage(
   }
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-3xl px-6 py-20">
-        <p className="text-sm text-neutral-500">Booking Request</p>
+    <main className="page-shell">
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
+          <p className="text-sm text-white/55">Booking request</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+            {item.title}
+          </h1>
+          <p className="mt-4 max-w-2xl text-white/65">
+            Send a request to the partner. Payment only happens after the partner accepts.
+          </p>
+        </div>
 
-        <h1 className="mt-3 text-5xl font-semibold">{item.title}</h1>
+        <div className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm text-neutral-500">Starting from</p>
+              <p className="mt-1 text-4xl font-semibold">${item.base_price}</p>
+            </div>
 
-        <p className="mt-5 text-lg text-neutral-600">
-          Submit your request and the vendor can follow up with availability and next steps.
-        </p>
-
-        <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
-          <p className="text-sm text-neutral-500">Starting from</p>
-
-          <p className="mt-2 text-4xl font-semibold">${item.base_price}</p>
+            <Link
+              href={`/experiences/${item.slug}`}
+              className="rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700"
+            >
+              Back to experience
+            </Link>
+          </div>
 
           {selectedSlot ? (
-            <div className="mt-6 rounded-2xl bg-neutral-50 p-4">
-              <p className="text-sm text-neutral-500">Selected slot</p>
+            <div className="mt-6 rounded-3xl bg-neutral-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Selected time
+              </p>
               <p className="mt-2 font-medium">
                 {new Date(selectedSlot.starts_at).toLocaleString()}
               </p>
               <p className="mt-1 text-sm text-neutral-500">
-                Spots left: {selectedSlot.spots_remaining}
+                {selectedSlot.spots_remaining} spots currently available
               </p>
             </div>
           ) : slot ? (
-            <div className="mt-6 rounded-2xl bg-red-50 p-4 text-red-700">
+            <div className="mt-6 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
               That time is no longer available.
             </div>
           ) : null}
 
-          <BookingRequestForm
-            experienceId={item.id}
-            slug={item.slug}
-            slotId={selectedSlot?.id || null}
-            defaultName={profile?.full_name || ""}
-            defaultEmail={user?.email || ""}
-          />
+          <div className="mt-8">
+            <BookingRequestForm
+              experienceId={item.id}
+              slug={item.slug}
+              slotId={selectedSlot?.id || null}
+              defaultName={profile?.full_name || ""}
+              defaultEmail={user?.email || ""}
+            />
+          </div>
         </div>
-
-        <Link
-          href={`/experiences/${item.slug}`}
-          className="mt-8 inline-block text-sm"
-        >
-          ← Back to experience
-        </Link>
       </section>
     </main>
   );
