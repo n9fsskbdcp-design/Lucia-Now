@@ -8,10 +8,18 @@ import LogoutButton from "./logout-button";
 
 type Role = "guest" | "tourist" | "vendor" | "admin";
 
-function MessageLink({ count }: { count: number }) {
+function BadgeLink({
+  href,
+  label,
+  count,
+}: {
+  href: string;
+  label: string;
+  count: number;
+}) {
   return (
-    <Link href="/messages" className="relative">
-      Messages
+    <Link href={href} className="relative">
+      {label}
       {count > 0 ? (
         <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
           {count}
@@ -21,13 +29,18 @@ function MessageLink({ count }: { count: number }) {
   );
 }
 
-function MobileMessageLink({ count }: { count: number }) {
+function MobileBadgeLink({
+  href,
+  label,
+  count,
+}: {
+  href: string;
+  label: string;
+  count: number;
+}) {
   return (
-    <Link
-      href="/messages"
-      className="rounded-full bg-neutral-100 px-4 py-2"
-    >
-      Messages
+    <Link href={href} className="rounded-full bg-neutral-100 px-4 py-2">
+      {label}
       {count > 0 ? (
         <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white">
           {count}
@@ -41,10 +54,12 @@ export default function NavbarClient({
   initialUser,
   initialRole,
   initialUnreadMessages,
+  initialUnreadNotifications,
 }: {
   initialUser: boolean;
   initialRole: string;
   initialUnreadMessages: number;
+  initialUnreadNotifications: number;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -52,6 +67,9 @@ export default function NavbarClient({
   const [hasUser, setHasUser] = useState(initialUser);
   const [role, setRole] = useState<Role>((initialRole as Role) || "guest");
   const [unreadMessages, setUnreadMessages] = useState(initialUnreadMessages);
+  const [unreadNotifications, setUnreadNotifications] = useState(
+    initialUnreadNotifications,
+  );
 
   useEffect(() => {
     let active = true;
@@ -68,6 +86,7 @@ export default function NavbarClient({
       if (!user) {
         setRole("guest");
         setUnreadMessages(0);
+        setUnreadNotifications(0);
         return;
       }
 
@@ -131,7 +150,12 @@ export default function NavbarClient({
               <>
                 <Link href="/vendor/experiences">Dashboard</Link>
                 <Link href="/vendor">Leads</Link>
-                <MessageLink count={unreadMessages} />
+                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
+                <BadgeLink
+                  href="/notifications"
+                  label="Notifications"
+                  count={unreadNotifications}
+                />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -148,8 +172,13 @@ export default function NavbarClient({
                 <Link href={dashboardHref}>Dashboard</Link>
                 <Link href="/admin/applications">Applications</Link>
                 <Link href="/admin/leads">Leads</Link>
-                <Link href="/admin/notifications">Notifications</Link>
-                <MessageLink count={unreadMessages} />
+                <Link href="/admin/notifications">Queue</Link>
+                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
+                <BadgeLink
+                  href="/notifications"
+                  label="Notifications"
+                  count={unreadNotifications}
+                />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
               </>
@@ -157,7 +186,12 @@ export default function NavbarClient({
 
             {hasUser && role === "tourist" && (
               <>
-                <MessageLink count={unreadMessages} />
+                <BadgeLink href="/messages" label="Messages" count={unreadMessages} />
+                <BadgeLink
+                  href="/notifications"
+                  label="Notifications"
+                  count={unreadNotifications}
+                />
                 <Link href="/account">Account</Link>
                 <LogoutButton />
                 <Link
@@ -195,7 +229,12 @@ export default function NavbarClient({
               <Link href="/vendor" className="rounded-full bg-neutral-100 px-4 py-2">
                 Leads
               </Link>
-              <MobileMessageLink count={unreadMessages} />
+              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
+              <MobileBadgeLink
+                href="/notifications"
+                label="Notifications"
+                count={unreadNotifications}
+              />
               <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>
@@ -217,9 +256,14 @@ export default function NavbarClient({
                 Leads
               </Link>
               <Link href="/admin/notifications" className="rounded-full bg-neutral-100 px-4 py-2">
-                Notifications
+                Queue
               </Link>
-              <MobileMessageLink count={unreadMessages} />
+              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
+              <MobileBadgeLink
+                href="/notifications"
+                label="Notifications"
+                count={unreadNotifications}
+              />
               <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>
@@ -231,7 +275,12 @@ export default function NavbarClient({
 
           {hasUser && role === "tourist" && (
             <>
-              <MobileMessageLink count={unreadMessages} />
+              <MobileBadgeLink href="/messages" label="Messages" count={unreadMessages} />
+              <MobileBadgeLink
+                href="/notifications"
+                label="Notifications"
+                count={unreadNotifications}
+              />
               <Link href="/account" className="rounded-full bg-neutral-100 px-4 py-2">
                 Account
               </Link>

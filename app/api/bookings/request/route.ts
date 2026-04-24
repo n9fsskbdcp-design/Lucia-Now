@@ -8,11 +8,7 @@ type BlackoutRow = {
   ends_at: string;
 };
 
-function isBlocked(
-  startsAt: string,
-  endsAt: string,
-  blackouts: BlackoutRow[],
-) {
+function isBlocked(startsAt: string, endsAt: string, blackouts: BlackoutRow[]) {
   const slotStart = new Date(startsAt).getTime();
   const slotEnd = new Date(endsAt).getTime();
 
@@ -26,6 +22,7 @@ function isBlocked(
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -126,6 +123,14 @@ export async function POST(request: Request) {
         experience_id,
         experience_title: experience.title,
       },
+    });
+
+    await supabaseAdmin.from("app_notifications").insert({
+      vendor_id: experience.vendor_id,
+      type: "booking_request",
+      title: "New booking request",
+      body: `${name} requested ${experience.title}.`,
+      href: `/vendor/leads/${inserted?.id}`,
     });
 
     return NextResponse.json({ success: true });

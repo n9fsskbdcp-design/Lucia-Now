@@ -10,6 +10,14 @@ const allowed = [
   "declined",
 ] as const;
 
+function notificationTitle(state: string) {
+  if (state === "confirmed_pending_payment") return "Booking accepted";
+  if (state === "declined") return "Booking declined";
+  if (state === "contacted") return "Vendor contacted you";
+  if (state === "paid_confirmed") return "Booking confirmed";
+  return "Booking updated";
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -38,7 +46,7 @@ export async function POST(
 
   const { data: lead } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, vendor_id, guest_email")
+    .select("id, vendor_id, user_id, guest_email")
     .eq("id", id)
     .single();
 
@@ -122,6 +130,19 @@ export async function POST(
       payment_status: payload.payment_status,
     },
   });
+
+  if (lead.user_id) {
+    await supabaseAdmin.from("app_notifications").insert({
+      user_id: lead.user_id,
+      type: "booking_status_update",
+      title: notificationTitle(nextState),
+      body:
+        nextState === "confirmed_pending_payment"
+          ? "Your booking request was accepted. Payment is needed to secure it."
+          : `Your booking status changed to ${nextState}.`,
+      href: `/account/bookings/${id}`,
+    });
+  }
 
   return NextResponse.redirect(
     new URL(`/vendor/leads/${id}?updated=${nextState}`, request.url),

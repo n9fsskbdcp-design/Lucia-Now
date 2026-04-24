@@ -90,6 +90,26 @@ export async function POST(
     },
   });
 
+  if (recipientRole === "vendor") {
+    await supabaseAdmin.from("app_notifications").insert({
+      vendor_id: booking.vendor_id,
+      type: "booking_message",
+      title: "New message",
+      body: "A traveler sent you a message.",
+      href: `/messages/${id}`,
+    });
+  }
+
+  if (recipientRole === "tourist" && booking.user_id) {
+    await supabaseAdmin.from("app_notifications").insert({
+      user_id: booking.user_id,
+      type: "booking_message",
+      title: "New message",
+      body: "A vendor sent you a message.",
+      href: `/messages/${id}`,
+    });
+  }
+
   return NextResponse.redirect(
     new URL(request.headers.get("referer") || "/", request.url),
   );
