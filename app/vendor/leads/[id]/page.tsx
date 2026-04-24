@@ -29,7 +29,7 @@ function actionMessage(status: string, paymentStatus: string) {
     return "This lead is marked as contacted. You can now accept it for payment or decline it.";
   }
 
-  return "Review this lead, contact the traveler if needed, then accept for payment or decline.";
+  return "Review this lead, message the traveler if needed, then accept for payment or decline.";
 }
 
 export default async function VendorLeadDetailPage(
@@ -95,16 +95,6 @@ export default async function VendorLeadDetailPage(
     .eq("booking_request_id", id)
     .order("created_at", { ascending: true });
 
-  const mailSubject = encodeURIComponent(
-    `Lucia Now booking request: ${lead.experiences?.title || "Experience"}`,
-  );
-
-  const mailBody = encodeURIComponent(
-    `Hi ${lead.guest_name},\n\nThanks for your booking request on Lucia Now.\n\n`,
-  );
-
-  const contactHref = `mailto:${lead.guest_email}?subject=${mailSubject}&body=${mailBody}`;
-
   return (
     <main className="min-h-screen bg-neutral-50">
       <section className="mx-auto max-w-5xl px-6 py-16">
@@ -121,10 +111,17 @@ export default async function VendorLeadDetailPage(
               Back to leads
             </Link>
 
+            <Link
+              href={`/messages/${lead.id}`}
+              className="rounded-xl bg-black px-5 py-3 text-white"
+            >
+              Message traveler
+            </Link>
+
             {lead.experiences?.slug ? (
               <Link
                 href={`/experiences/${lead.experiences.slug}`}
-                className="rounded-xl bg-black px-5 py-3 text-white"
+                className="rounded-xl border px-5 py-3"
               >
                 View public page
               </Link>
@@ -183,12 +180,12 @@ export default async function VendorLeadDetailPage(
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <a
-                href={contactHref}
+              <Link
+                href={`/messages/${lead.id}`}
                 className="rounded-xl bg-black px-5 py-3 text-white"
               >
-                Email tourist
-              </a>
+                Open conversation
+              </Link>
 
               <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
                 <input type="hidden" name="contact_status" value="contacted" />
