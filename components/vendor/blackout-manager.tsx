@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CalendarX } from "lucide-react";
 import { toast } from "sonner";
 
 type Blackout = {
@@ -65,56 +66,77 @@ export default function BlackoutManager({
   }
 
   return (
-    <section className="rounded-3xl bg-white p-8 shadow-sm">
-      <h2 className="text-2xl font-semibold">Blackout dates</h2>
-      <p className="mt-2 text-neutral-600">
-        Block dates when this experience should not be bookable.
-      </p>
+    <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+          <CalendarX size={22} />
+        </div>
 
-      <form onSubmit={createBlackout} className="mt-6 grid gap-4 md:grid-cols-3">
-        <input
-          type="datetime-local"
-          value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
-          className="rounded-xl border px-4 py-3"
-          required
-        />
-        <input
-          type="datetime-local"
-          value={endsAt}
-          onChange={(e) => setEndsAt(e.target.value)}
-          className="rounded-xl border px-4 py-3"
-          required
-        />
-        <input
-          type="text"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason (optional)"
-          className="rounded-xl border px-4 py-3"
-        />
+        <div>
+          <h2 className="text-2xl font-semibold">Closed dates</h2>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">
+            Block days or time ranges when this experience should not be bookable.
+          </p>
+        </div>
+      </div>
 
-        <div className="md:col-span-3">
-          <button className="rounded-xl bg-black px-5 py-3 text-white">
-            Add blackout
+      <form onSubmit={createBlackout} className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div>
+          <label className="mb-2 block text-sm font-medium">Starts</label>
+          <input
+            type="datetime-local"
+            value={startsAt}
+            onChange={(e) => setStartsAt(e.target.value)}
+            className="w-full rounded-2xl border px-4 py-3"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">Ends</label>
+          <input
+            type="datetime-local"
+            value={endsAt}
+            onChange={(e) => setEndsAt(e.target.value)}
+            className="w-full rounded-2xl border px-4 py-3"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">Reason</label>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Optional"
+            className="w-full rounded-2xl border px-4 py-3"
+          />
+        </div>
+
+        <div className="lg:col-span-3">
+          <button className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white">
+            Add closed time
           </button>
         </div>
       </form>
 
       <div className="mt-6 space-y-3">
         {blackouts.length === 0 ? (
-          <p className="text-neutral-500">No blackout dates yet.</p>
+          <div className="rounded-3xl bg-neutral-50 p-5 text-sm text-neutral-500">
+            No closed dates yet.
+          </div>
         ) : (
           blackouts.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-4 rounded-3xl bg-neutral-50 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="font-medium">
                   {new Date(item.starts_at).toLocaleString()}
                 </p>
-                <p className="text-sm text-neutral-500">
+                <p className="mt-1 text-sm text-neutral-500">
                   to {new Date(item.ends_at).toLocaleString()}
                 </p>
                 {item.reason ? (
@@ -125,7 +147,7 @@ export default function BlackoutManager({
               <button
                 type="button"
                 onClick={() => deleteBlackout(item.id)}
-                className="rounded-xl border px-4 py-2 text-red-600"
+                className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-red-600 shadow-sm ring-1 ring-black/5"
               >
                 Remove
               </button>

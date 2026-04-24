@@ -3,6 +3,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import MessageThread from "@/components/booking/message-thread";
+import MarkReadRefresh from "@/components/messages/mark-read-refresh";
+
+export const dynamic = "force-dynamic";
 
 export default async function MessageConversationPage(
   props: {
@@ -73,38 +76,40 @@ export default async function MessageConversationPage(
     .order("created_at", { ascending: true });
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <main className="page-shell">
+      <MarkReadRefresh />
+
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-neutral-500">Conversation</p>
-            <h1 className="mt-2 text-4xl font-semibold">
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">
               {booking.experiences?.title || "Booking"}
             </h1>
 
             <p className="mt-2 text-sm text-neutral-500">
               {role === "tourist"
-                ? "Chat with the vendor about this request."
+                ? "Chat with the partner about this request."
                 : `Chat with ${booking.guest_name}.`}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/messages" className="rounded-xl border px-5 py-3">
+            <Link href="/messages" className="rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-700 shadow-sm ring-1 ring-black/5">
               All messages
             </Link>
 
             {role === "vendor" || role === "admin" ? (
               <Link
                 href={`/vendor/leads/${booking.id}`}
-                className="rounded-xl bg-black px-5 py-3 text-white"
+                className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white"
               >
                 Lead
               </Link>
             ) : (
               <Link
                 href={`/account/bookings/${booking.id}`}
-                className="rounded-xl bg-black px-5 py-3 text-white"
+                className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white"
               >
                 Booking
               </Link>
