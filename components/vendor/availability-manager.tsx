@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CalendarPlus, Clock, Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Slot = {
@@ -77,7 +78,7 @@ export default function AvailabilityManager({
         return;
       }
 
-      toast.success("Availability slot added");
+      toast.success("Availability added");
       window.location.reload();
       return;
     }
@@ -85,26 +86,17 @@ export default function AvailabilityManager({
     const intervalDays = repeatMode === "daily" ? 1 : 7;
     const start = new Date(startsAt);
 
-    const rows = Array.from({ length: repeatCount }).map((_, index) => {
+    for (let index = 0; index < repeatCount; index += 1) {
       const nextStart = new Date(start);
       nextStart.setDate(nextStart.getDate() + index * intervalDays);
 
-      return {
-        starts_at: nextStart.toISOString(),
-        duration_minutes: durationMinutes,
-        capacity_total: capacityTotal,
-        weeks: 1,
-      };
-    });
-
-    for (const row of rows) {
       const res = await fetch(`/api/vendor/experiences/${experienceId}/availability/recurring`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          starts_at: row.starts_at,
-          duration_minutes: row.duration_minutes,
-          capacity_total: row.capacity_total,
+          starts_at: nextStart.toISOString(),
+          duration_minutes: durationMinutes,
+          capacity_total: capacityTotal,
           weeks: 1,
         }),
       });
@@ -113,13 +105,13 @@ export default function AvailabilityManager({
 
       if (!res.ok) {
         setLoading(false);
-        toast.error(data.error || "Could not create recurring slots");
+        toast.error(data.error || "Could not create repeating slots");
         return;
       }
     }
 
     setLoading(false);
-    toast.success(`${repeatMode === "daily" ? "Daily" : "Weekly"} slots added`);
+    toast.success("Repeating availability added");
     window.location.reload();
   }
 
@@ -147,7 +139,7 @@ export default function AvailabilityManager({
       return;
     }
 
-    toast.success(daysToAdd === 7 ? "Slot duplicated to next week" : "Slot duplicated");
+    toast.success(daysToAdd === 7 ? "Duplicated to next week" : "Duplicated to next day");
     window.location.reload();
   }
 
@@ -190,36 +182,47 @@ export default function AvailabilityManager({
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl bg-white p-8 shadow-sm">
-        <h2 className="text-2xl font-semibold">Add available time</h2>
-        <p className="mt-2 text-neutral-600">
-          Create one-time, daily, or weekly availability.
-        </p>
+    <div className="space-y-6">
+      <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+            <CalendarPlus size={22} />
+          </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={() => quickSet(0, 10)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
-            Today 10:00
-          </button>
-          <button type="button" onClick={() => quickSet(0, 14)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
-            Today 14:00
-          </button>
-          <button type="button" onClick={() => quickSet(1, 9)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
-            Tomorrow 09:00
-          </button>
-          <button type="button" onClick={() => quickSet(1, 15)} className="rounded-full bg-neutral-100 px-4 py-2 text-sm">
-            Tomorrow 15:00
-          </button>
+          <div>
+            <h2 className="text-2xl font-semibold">Add available time</h2>
+            <p className="mt-2 text-sm leading-6 text-neutral-600">
+              Create a single slot or repeat the same slot daily or weekly.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={createSlot} className="mt-8 grid gap-5 md:grid-cols-4">
-          <div>
+        <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+          {[
+            ["Today 10:00", 0, 10],
+            ["Today 14:00", 0, 14],
+            ["Tomorrow 09:00", 1, 9],
+            ["Tomorrow 15:00", 1, 15],
+          ].map(([label, days, hour]) => (
+            <button
+              key={String(label)}
+              type="button"
+              onClick={() => quickSet(Number(days), Number(hour))}
+              className="shrink-0 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={createSlot} className="mt-6 grid gap-4 lg:grid-cols-4">
+          <div className="lg:col-span-2">
             <label className="mb-2 block text-sm font-medium">Start date & time</label>
             <input
               type="datetime-local"
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
-              className="w-full rounded-xl border px-4 py-3"
+              className="w-full rounded-2xl border px-4 py-3"
               required
             />
           </div>
@@ -229,7 +232,7 @@ export default function AvailabilityManager({
             <select
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="w-full rounded-xl border px-4 py-3"
+              className="w-full rounded-2xl border px-4 py-3"
             >
               {durationOptions.map((option) => (
                 <option key={option.minutes} value={option.minutes}>
@@ -240,13 +243,13 @@ export default function AvailabilityManager({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">Spots available</label>
+            <label className="mb-2 block text-sm font-medium">Spots</label>
             <input
               type="number"
               min={1}
               value={capacityTotal}
               onChange={(e) => setCapacityTotal(Number(e.target.value))}
-              className="w-full rounded-xl border px-4 py-3"
+              className="w-full rounded-2xl border px-4 py-3"
               required
             />
           </div>
@@ -256,7 +259,7 @@ export default function AvailabilityManager({
             <select
               value={repeatMode}
               onChange={(e) => setRepeatMode(e.target.value as "once" | "daily" | "weekly")}
-              className="w-full rounded-xl border px-4 py-3"
+              className="w-full rounded-2xl border px-4 py-3"
             >
               <option value="once">One time</option>
               <option value="daily">Daily</option>
@@ -266,13 +269,11 @@ export default function AvailabilityManager({
 
           {repeatMode !== "once" ? (
             <div>
-              <label className="mb-2 block text-sm font-medium">
-                Repeat count
-              </label>
+              <label className="mb-2 block text-sm font-medium">How many?</label>
               <select
                 value={repeatCount}
                 onChange={(e) => setRepeatCount(Number(e.target.value))}
-                className="w-full rounded-xl border px-4 py-3"
+                className="w-full rounded-2xl border px-4 py-3"
               >
                 <option value={2}>2 times</option>
                 <option value={3}>3 times</option>
@@ -283,39 +284,48 @@ export default function AvailabilityManager({
             </div>
           ) : null}
 
-          <div className="md:col-span-4 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">
-            <p>
-              <strong>Ends at:</strong> {endsAt ? new Date(endsAt).toLocaleString() : "—"}
+          <div className="rounded-3xl bg-neutral-50 p-4 lg:col-span-4">
+            <p className="flex items-center text-sm text-neutral-600">
+              <Clock className="mr-2" size={17} />
+              Ends at:{" "}
+              <strong className="ml-1 text-neutral-950">
+                {endsAt ? new Date(endsAt).toLocaleString() : "—"}
+              </strong>
             </p>
           </div>
 
-          <div className="md:col-span-4">
-            <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-white">
+          <div className="lg:col-span-4">
+            <button
+              disabled={loading}
+              className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
+            >
               {loading ? "Adding..." : "Add availability"}
             </button>
           </div>
         </form>
       </section>
 
-      <section className="rounded-3xl bg-white p-8 shadow-sm">
+      <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
         <h2 className="text-2xl font-semibold">Upcoming slots</h2>
 
         {slots.length === 0 ? (
-          <p className="mt-6 text-neutral-500">No availability added yet.</p>
+          <div className="mt-6 rounded-3xl bg-neutral-50 p-5 text-sm text-neutral-500">
+            No availability added yet.
+          </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-3">
             {slots.map((slot) => (
-              <div key={slot.id} className="rounded-2xl border border-neutral-200 p-5">
+              <div key={slot.id} className="rounded-3xl bg-neutral-50 p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className="text-lg font-medium">
+                    <p className="font-semibold">
                       {new Date(slot.starts_at).toLocaleString()}
                     </p>
                     <p className="mt-1 text-sm text-neutral-500">
                       Ends {new Date(slot.ends_at).toLocaleString()}
                     </p>
-                    <p className="mt-3 text-sm text-neutral-700">
-                      Capacity {slot.capacity_total} · {slot.spots_remaining} spots remaining
+                    <p className="mt-2 text-sm text-neutral-700">
+                      {slot.spots_remaining}/{slot.capacity_total} spots remaining
                     </p>
                   </div>
 
@@ -323,16 +333,18 @@ export default function AvailabilityManager({
                     <button
                       type="button"
                       onClick={() => duplicateSlot(slot, 1)}
-                      className="rounded-xl border px-4 py-2 text-sm"
+                      className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm ring-1 ring-black/5"
                     >
+                      <Copy className="mr-2" size={15} />
                       Next day
                     </button>
 
                     <button
                       type="button"
                       onClick={() => duplicateSlot(slot, 7)}
-                      className="rounded-xl border px-4 py-2 text-sm"
+                      className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm ring-1 ring-black/5"
                     >
+                      <Copy className="mr-2" size={15} />
                       Next week
                     </button>
 
@@ -340,7 +352,7 @@ export default function AvailabilityManager({
                       <button
                         type="button"
                         onClick={() => updateSlot(slot.id, "open")}
-                        className="rounded-xl border px-4 py-2 text-sm"
+                        className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm ring-1 ring-black/5"
                       >
                         Reopen
                       </button>
@@ -348,31 +360,24 @@ export default function AvailabilityManager({
                       <button
                         type="button"
                         onClick={() => updateSlot(slot.id, "sold_out")}
-                        className="rounded-xl border px-4 py-2 text-sm"
+                        className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm ring-1 ring-black/5"
                       >
-                        Mark sold out
+                        Sold out
                       </button>
                     )}
 
                     <button
                       type="button"
-                      onClick={() => updateSlot(slot.id, "cancelled")}
-                      className="rounded-xl border px-4 py-2 text-sm text-red-600"
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => deleteSlot(slot.id)}
-                      className="rounded-xl bg-black px-4 py-2 text-sm text-white"
+                      className="inline-flex items-center rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white"
                     >
+                      <Trash2 className="mr-2" size={15} />
                       Delete
                     </button>
                   </div>
                 </div>
 
-                <div className="mt-4 inline-flex rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium">
+                <div className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-600">
                   {slot.status}
                 </div>
               </div>
