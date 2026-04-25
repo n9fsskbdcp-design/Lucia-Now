@@ -94,8 +94,8 @@ export async function POST(
     await supabaseAdmin.from("app_notifications").insert({
       vendor_id: booking.vendor_id,
       type: "booking_message",
-      title: "New message",
-      body: "A traveler sent you a message.",
+      title: "New traveler message",
+      body: "A traveler sent you a message about a booking request.",
       href: `/messages/${id}`,
     });
   }
@@ -104,8 +104,8 @@ export async function POST(
     await supabaseAdmin.from("app_notifications").insert({
       user_id: booking.user_id,
       type: "booking_message",
-      title: "New message",
-      body: "A vendor sent you a message.",
+      title: "New partner message",
+      body: "A partner sent you a message about your booking request.",
       href: `/messages/${id}`,
     });
   }

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import MarkNotificationsReadRefresh from "@/components/notifications/mark-notifications-read-refresh";
+
+export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   const supabase = await createClient();
@@ -38,6 +41,8 @@ export default async function NotificationsPage() {
       "vendor_id",
       vendor?.id || "00000000-0000-0000-0000-000000000000",
     );
+  } else if (role === "admin") {
+    query = query.eq("user_id", user.id);
   } else {
     query = query.eq("user_id", user.id);
   }
@@ -57,6 +62,8 @@ export default async function NotificationsPage() {
 
   return (
     <main className="page-shell">
+      <MarkNotificationsReadRefresh />
+
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
         <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
           <Bell size={28} className="text-white/70" />
@@ -64,7 +71,7 @@ export default async function NotificationsPage() {
             Notifications
           </h1>
           <p className="mt-3 max-w-xl text-white/65">
-            Booking updates, payment prompts, and important platform alerts.
+            Booking updates, payment prompts, and platform alerts.
           </p>
         </div>
 

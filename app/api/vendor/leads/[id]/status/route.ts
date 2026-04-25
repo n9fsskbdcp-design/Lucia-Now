@@ -13,9 +13,29 @@ const allowed = [
 function notificationTitle(state: string) {
   if (state === "confirmed_pending_payment") return "Booking accepted";
   if (state === "declined") return "Booking declined";
-  if (state === "contacted") return "Vendor contacted you";
+  if (state === "contacted") return "Vendor marked your request contacted";
   if (state === "paid_confirmed") return "Booking confirmed";
   return "Booking updated";
+}
+
+function notificationBody(state: string) {
+  if (state === "confirmed_pending_payment") {
+    return "Your booking request was accepted. Payment is needed to secure it.";
+  }
+
+  if (state === "declined") {
+    return "The partner declined your booking request.";
+  }
+
+  if (state === "contacted") {
+    return "The partner reviewed or contacted you about your request.";
+  }
+
+  if (state === "paid_confirmed") {
+    return "Your booking is paid and confirmed.";
+  }
+
+  return `Your booking status changed to ${state}.`;
 }
 
 export async function POST(
@@ -46,7 +66,18 @@ export async function POST(
 
   const { data: lead } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, vendor_id, user_id, guest_email")
+    .select(
+      `
+      id,
+      vendor_id,
+      user_id,
+      guest_email,
+      guest_name,
+      experiences (
+        title
+      )
+    `,
+    )
     .eq("id", id)
     .single();
 
@@ -136,10 +167,7 @@ export async function POST(
       user_id: lead.user_id,
       type: "booking_status_update",
       title: notificationTitle(nextState),
-      body:
-        nextState === "confirmed_pending_payment"
-          ? "Your booking request was accepted. Payment is needed to secure it."
-          : `Your booking status changed to ${nextState}.`,
+      body: notificationBody(nextState),
       href: `/account/bookings/${id}`,
     });
   }

@@ -9,6 +9,7 @@ export async function POST(
   const { id } = await context.params;
 
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,7 +20,7 @@ export async function POST(
 
   const { data: booking } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, user_id, slot_id, guests, payment_status, contact_status")
+    .select("id, user_id, vendor_id, slot_id, guests, payment_status, contact_status")
     .eq("id", id)
     .single();
 
@@ -87,6 +88,22 @@ export async function POST(
       booking_request_id: id,
       payment_status: "paid",
     },
+  });
+
+  await supabaseAdmin.from("app_notifications").insert({
+    vendor_id: booking.vendor_id,
+    type: "booking_paid",
+    title: "Booking paid",
+    body: "A traveler completed payment. The booking is now confirmed.",
+    href: `/vendor/leads/${id}`,
+  });
+
+  await supabaseAdmin.from("app_notifications").insert({
+    user_id: user.id,
+    type: "booking_paid",
+    title: "Payment received",
+    body: "Your booking is now paid and confirmed.",
+    href: `/account/bookings/${id}`,
   });
 
   return NextResponse.json({ success: true });
