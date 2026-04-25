@@ -95,7 +95,10 @@ export default async function MessageConversationPage(
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/messages" className="rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-700 shadow-sm ring-1 ring-black/5">
+            <Link
+              href="/messages"
+              className="rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-700 shadow-sm ring-1 ring-black/5"
+            >
               All messages
             </Link>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
@@ -112,6 +112,37 @@ export default function NavbarClient({
     initialUnreadNotifications,
   );
 
+  const syncBadges = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me/badges", {
+        cache: "no-store",
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      setHasUser(Boolean(data.authenticated));
+      setRole((data.role as Role) || "guest");
+      setUnreadMessages(Number(data.unreadMessages || 0));
+      setUnreadNotifications(Number(data.unreadNotifications || 0));
+    } catch {
+      // Keep current navbar state if badge sync fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    setHasUser(initialUser);
+    setRole((initialRole as Role) || "guest");
+    setUnreadMessages(initialUnreadMessages);
+    setUnreadNotifications(initialUnreadNotifications);
+  }, [
+    initialUser,
+    initialRole,
+    initialUnreadMessages,
+    initialUnreadNotifications,
+  ]);
+
   useEffect(() => {
     let active = true;
 
@@ -122,22 +153,15 @@ export default function NavbarClient({
 
       if (!active) return;
 
-      setHasUser(!!user);
-
       if (!user) {
+        setHasUser(false);
         setRole("guest");
         setUnreadMessages(0);
         setUnreadNotifications(0);
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      setRole((profile?.role as Role) || "tourist");
+      await syncBadges();
     }
 
     syncSession();
@@ -153,11 +177,32 @@ export default function NavbarClient({
       active = false;
       subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [router, supabase, syncBadges]);
 
   useEffect(() => {
     setMenuOpen(false);
-  }, [pathname]);
+    syncBadges();
+  }, [pathname, syncBadges]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      syncBadges();
+    }, 12000);
+
+    return () => window.clearInterval(interval);
+  }, [syncBadges]);
+
+  useEffect(() => {
+    function handleFocus() {
+      syncBadges();
+    }
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [syncBadges]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -209,7 +254,7 @@ export default function NavbarClient({
               {hasUser && role === "admin" ? (
                 <>
                   <NavLink
-                    href="/admin"
+                    href={dashboardHref}
                     label="Admin"
                     active={isActive("/admin")}
                   />
@@ -416,7 +461,7 @@ export default function NavbarClient({
                   />
                   <MobileLink
                     href="/notifications"
-                    label="Notifications"
+                    label="Alerts"
                     icon={<Bell size={18} />}
                     active={isActive("/notifications")}
                     count={unreadNotifications}

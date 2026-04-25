@@ -15,6 +15,7 @@ function isBlocked(startsAt: string, endsAt: string, blackouts: BlackoutRow[]) {
   return blackouts.some((blackout) => {
     const blackoutStart = new Date(blackout.starts_at).getTime();
     const blackoutEnd = new Date(blackout.ends_at).getTime();
+
     return slotStart < blackoutEnd && slotEnd > blackoutStart;
   });
 }
@@ -132,6 +133,16 @@ export async function POST(request: Request) {
       body: `${name} requested ${experience.title}.`,
       href: `/vendor/leads/${inserted?.id}`,
     });
+
+    if (user?.id) {
+      await supabaseAdmin.from("app_notifications").insert({
+        user_id: user.id,
+        type: "booking_request_sent",
+        title: "Booking request sent",
+        body: `Your request for ${experience.title} was sent to the partner.`,
+        href: `/account/bookings/${inserted?.id}`,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
