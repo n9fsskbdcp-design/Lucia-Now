@@ -13,7 +13,7 @@ const allowed = [
 function notificationTitle(state: string) {
   if (state === "confirmed_pending_payment") return "Booking accepted";
   if (state === "declined") return "Booking declined";
-  if (state === "contacted") return "Vendor marked your request contacted";
+  if (state === "contacted") return "Booking request updated";
   if (state === "paid_confirmed") return "Booking confirmed";
   return "Booking updated";
 }
@@ -153,7 +153,7 @@ export async function POST(
   await supabaseAdmin.from("notifications_queue").insert({
     type: "booking_status_update",
     recipient_email: lead.guest_email,
-    subject: `Booking update: ${nextState}`,
+    subject: `Booking update: ${notificationTitle(nextState)}`,
     payload: {
       booking_request_id: id,
       contact_status: nextState,
@@ -163,13 +163,23 @@ export async function POST(
   });
 
   if (lead.user_id) {
-    await supabaseAdmin.from("app_notifications").insert({
-      user_id: lead.user_id,
-      type: "booking_status_update",
-      title: notificationTitle(nextState),
-      body: notificationBody(nextState),
-      href: `/account/bookings/${id}`,
-    });
+    const { error: appNotificationError } = await supabaseAdmin
+      .from("app_notifications")
+      .insert({
+        user_id: lead.user_id,
+        type: "booking_status_update",
+        title: notificationTitle(nextState),
+        body: notificationBody(nextState),
+        href: `/account/bookings/${id}`,
+      });
+
+    if (appNotificationError) {
+      console.error("Status app notification failed:", appNotificationError);
+    }
+  } else {
+    console.warn(
+      `No in-app status notification created for booking ${id} because lead.user_id is null.`,
+    );
   }
 
   return NextResponse.redirect(

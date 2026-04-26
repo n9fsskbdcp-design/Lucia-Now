@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
@@ -26,6 +26,16 @@ function Badge({ count }: { count: number }) {
 
   return (
     <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[11px] font-semibold text-white">
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+function FloatingBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white ring-2 ring-white">
       {count > 9 ? "9+" : count}
     </span>
   );
@@ -111,6 +121,12 @@ export default function NavbarClient({
   const [unreadNotifications, setUnreadNotifications] = useState(
     initialUnreadNotifications,
   );
+  const [showNotificationToast, setShowNotificationToast] = useState(false);
+
+  const hasMountedRef = useRef(false);
+  const previousNotificationsRef = useRef(initialUnreadNotifications);
+
+  const totalMobileBadges = unreadMessages + unreadNotifications;
 
   const syncBadges = useCallback(async () => {
     try {
@@ -122,13 +138,33 @@ export default function NavbarClient({
 
       const data = await res.json();
 
+      const nextUnreadNotifications = Number(data.unreadNotifications || 0);
+
       setHasUser(Boolean(data.authenticated));
       setRole((data.role as Role) || "guest");
       setUnreadMessages(Number(data.unreadMessages || 0));
-      setUnreadNotifications(Number(data.unreadNotifications || 0));
+      setUnreadNotifications(nextUnreadNotifications);
+
+      if (
+        hasMountedRef.current &&
+        nextUnreadNotifications > previousNotificationsRef.current &&
+        pathname !== "/notifications"
+      ) {
+        setShowNotificationToast(true);
+
+        window.setTimeout(() => {
+          setShowNotificationToast(false);
+        }, 4500);
+      }
+
+      previousNotificationsRef.current = nextUnreadNotifications;
     } catch {
       // Keep current navbar state if badge sync fails.
     }
+  }, [pathname]);
+
+  useEffect(() => {
+    hasMountedRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -136,6 +172,7 @@ export default function NavbarClient({
     setRole((initialRole as Role) || "guest");
     setUnreadMessages(initialUnreadMessages);
     setUnreadNotifications(initialUnreadNotifications);
+    previousNotificationsRef.current = initialUnreadNotifications;
   }, [
     initialUser,
     initialRole,
@@ -158,6 +195,7 @@ export default function NavbarClient({
         setRole("guest");
         setUnreadMessages(0);
         setUnreadNotifications(0);
+        previousNotificationsRef.current = 0;
         return;
       }
 
@@ -187,7 +225,7 @@ export default function NavbarClient({
   useEffect(() => {
     const interval = window.setInterval(() => {
       syncBadges();
-    }, 12000);
+    }, 6000);
 
     return () => window.clearInterval(interval);
   }, [syncBadges]);
@@ -219,6 +257,23 @@ export default function NavbarClient({
 
   return (
     <>
+      {showNotificationToast ? (
+        <Link
+          href="/notifications"
+          className="fixed right-4 top-20 z-[80] flex max-w-xs items-start gap-3 rounded-2xl bg-neutral-950 p-4 text-white shadow-2xl ring-1 ring-white/10"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+            <Bell size={18} />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">New notification</span>
+            <span className="mt-1 block text-xs leading-5 text-white/65">
+              You have a new Lucia Now alert.
+            </span>
+          </span>
+        </Link>
+      ) : null}
+
       <header className="sticky top-0 z-50 border-b border-neutral-200/70 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between">
@@ -329,10 +384,11 @@ export default function NavbarClient({
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-900 lg:hidden"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-900 lg:hidden"
               aria-label="Open menu"
             >
               <Menu size={20} />
+              <FloatingBadge count={totalMobileBadges} />
             </button>
           </div>
         </div>

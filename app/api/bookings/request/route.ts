@@ -34,11 +34,17 @@ export async function POST(request: Request) {
     const guestCount = Number(guests);
 
     if (!experience_id || !name || !email || !guestCount) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     if (guestCount < 1) {
-      return NextResponse.json({ error: "Guests must be at least 1" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Guests must be at least 1" },
+        { status: 400 },
+      );
     }
 
     const { data: experience } = await supabaseAdmin
@@ -48,7 +54,10 @@ export async function POST(request: Request) {
       .single();
 
     if (!experience) {
-      return NextResponse.json({ error: "Experience not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Experience not found" },
+        { status: 404 },
+      );
     }
 
     let requestedStartAt: string | null = null;
@@ -63,7 +72,10 @@ export async function POST(request: Request) {
         .single();
 
       if (!slot) {
-        return NextResponse.json({ error: "Selected slot not found" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Selected slot not found" },
+          { status: 400 },
+        );
       }
 
       const { data: blackoutData } = await supabaseAdmin
@@ -111,8 +123,11 @@ export async function POST(request: Request) {
       .select("id")
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error || !inserted) {
+      return NextResponse.json(
+        { error: error?.message || "Could not create booking request" },
+        { status: 400 },
+      );
     }
 
     await supabaseAdmin.from("notifications_queue").insert({
@@ -120,31 +135,49 @@ export async function POST(request: Request) {
       recipient_email: email,
       subject: `Booking request received for ${experience.title}`,
       payload: {
-        booking_request_id: inserted?.id,
+        booking_request_id: inserted.id,
         experience_id,
         experience_title: experience.title,
       },
     });
 
-    await supabaseAdmin.from("app_notifications").insert({
-      vendor_id: experience.vendor_id,
-      type: "booking_request",
-      title: "New booking request",
-      body: `${name} requested ${experience.title}.`,
-      href: `/vendor/leads/${inserted?.id}`,
-    });
-
-    if (user?.id) {
-      await supabaseAdmin.from("app_notifications").insert({
-        user_id: user.id,
-        type: "booking_request_sent",
-        title: "Booking request sent",
-        body: `Your request for ${experience.title} was sent to the partner.`,
-        href: `/account/bookings/${inserted?.id}`,
+    const { error: vendorNotificationError } = await supabaseAdmin
+      .from("app_notifications")
+      .insert({
+        vendor_id: experience.vendor_id,
+        type: "booking_request",
+        title: "New booking request",
+        body: `${name} requested ${experience.title}.`,
+        href: `/vendor/leads/${inserted.id}`,
       });
+
+    if (vendorNotificationError) {
+      console.error("Vendor app notification failed:", vendorNotificationError);
     }
 
-    return NextResponse.json({ success: true });
+    if (user?.id) {
+      const { error: touristNotificationError } = await supabaseAdmin
+        .from("app_notifications")
+        .insert({
+          user_id: user.id,
+          type: "booking_request_sent",
+          title: "Booking request sent",
+          body: `Your request for ${experience.title} was sent to the partner.`,
+          href: `/account/bookings/${inserted.id}`,
+        });
+
+      if (touristNotificationError) {
+        console.error(
+          "Tourist app notification failed:",
+          touristNotificationError,
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      booking_request_id: inserted.id,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
