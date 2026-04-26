@@ -87,7 +87,10 @@ export async function POST(
 
   if (!canCancel(booking.contact_status, booking.payment_status)) {
     return NextResponse.redirect(
-      new URL(`${redirectTo}?error=This booking cannot be cancelled`, request.url),
+      new URL(
+        `${redirectTo}?error=This booking cannot be cancelled`,
+        request.url,
+      ),
     );
   }
 
@@ -96,16 +99,16 @@ export async function POST(
     .update({
       status: "cancelled",
       contact_status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: cancelledBy,
-      status_updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .neq("payment_status", "paid");
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`${redirectTo}?error=${encodeURIComponent(error.message)}`, request.url),
+      new URL(
+        `${redirectTo}?error=${encodeURIComponent(error.message)}`,
+        request.url,
+      ),
     );
   }
 
@@ -140,5 +143,7 @@ export async function POST(
     });
   }
 
-  return NextResponse.redirect(new URL(`${redirectTo}?cancelled=1`, request.url));
+  return NextResponse.redirect(
+    new URL(`${redirectTo}?cancelled=1`, request.url),
+  );
 }

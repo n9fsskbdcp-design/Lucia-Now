@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const allowed = [
-  "contacted",
-  "confirmed_pending_payment",
-  "declined",
-] as const;
+const allowed = ["contacted", "confirmed_pending_payment", "declined"] as const;
 
 const transitions: Record<string, string[]> = {
   new: ["contacted", "confirmed_pending_payment", "declined"],
@@ -46,7 +42,6 @@ function statusPayload(nextState: string) {
       status: "contacted",
       contact_status: "contacted",
       payment_status: "unpaid",
-      status_updated_at: new Date().toISOString(),
     };
   }
 
@@ -56,7 +51,6 @@ function statusPayload(nextState: string) {
       contact_status: "confirmed_pending_payment",
       payment_status: "unpaid",
       confirmed_at: new Date().toISOString(),
-      status_updated_at: new Date().toISOString(),
     };
   }
 
@@ -65,7 +59,6 @@ function statusPayload(nextState: string) {
       status: "declined",
       contact_status: "declined",
       payment_status: "unpaid",
-      status_updated_at: new Date().toISOString(),
     };
   }
 
@@ -147,7 +140,10 @@ export async function POST(
 
   if (currentState === nextState) {
     return NextResponse.redirect(
-      new URL(`/vendor/leads/${id}?error=Status is already ${nextState}`, request.url),
+      new URL(
+        `/vendor/leads/${id}?error=Status is already ${nextState}`,
+        request.url,
+      ),
     );
   }
 
@@ -200,26 +196,13 @@ export async function POST(
   });
 
   if (lead.user_id) {
-    const { error: appNotificationError } = await supabaseAdmin
-      .from("app_notifications")
-      .insert({
-        user_id: lead.user_id,
-        type: "booking_status_update",
-        title: notificationTitle(nextState),
-        body: notificationBody(nextState),
-        href: `/account/bookings/${id}`,
-      });
-
-    if (appNotificationError) {
-      return NextResponse.redirect(
-        new URL(
-          `/vendor/leads/${id}?error=${encodeURIComponent(
-            `Status changed, but notification failed: ${appNotificationError.message}`,
-          )}`,
-          request.url,
-        ),
-      );
-    }
+    await supabaseAdmin.from("app_notifications").insert({
+      user_id: lead.user_id,
+      type: "booking_status_update",
+      title: notificationTitle(nextState),
+      body: notificationBody(nextState),
+      href: `/account/bookings/${id}`,
+    });
   }
 
   return NextResponse.redirect(

@@ -119,7 +119,6 @@ export async function POST(request: Request) {
         status: "new",
         contact_status: "new",
         payment_status: "unpaid",
-        status_updated_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -142,25 +141,13 @@ export async function POST(request: Request) {
       },
     });
 
-    const { error: vendorNotificationError } = await supabaseAdmin
-      .from("app_notifications")
-      .insert({
-        vendor_id: experience.vendor_id,
-        type: "booking_request",
-        title: "New booking request",
-        body: `${name} requested ${experience.title}.`,
-        href: `/vendor/leads/${inserted.id}`,
-      });
-
-    if (vendorNotificationError) {
-      return NextResponse.json(
-        {
-          error: `Booking created, but vendor notification failed: ${vendorNotificationError.message}`,
-          booking_request_id: inserted.id,
-        },
-        { status: 500 },
-      );
-    }
+    await supabaseAdmin.from("app_notifications").insert({
+      vendor_id: experience.vendor_id,
+      type: "booking_request",
+      title: "New booking request",
+      body: `${name} requested ${experience.title}.`,
+      href: `/vendor/leads/${inserted.id}`,
+    });
 
     if (user?.id) {
       await supabaseAdmin.from("app_notifications").insert({
