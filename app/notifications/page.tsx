@@ -41,24 +41,11 @@ export default async function NotificationsPage() {
       "vendor_id",
       vendor?.id || "00000000-0000-0000-0000-000000000000",
     );
-  } else if (role === "admin") {
-    query = query.eq("user_id", user.id);
   } else {
     query = query.eq("user_id", user.id);
   }
 
   const { data: notifications } = await query;
-
-  const unreadIds = (notifications ?? [])
-    .filter((item) => item.read_at === null)
-    .map((item) => item.id);
-
-  if (unreadIds.length > 0) {
-    await supabaseAdmin
-      .from("app_notifications")
-      .update({ read_at: new Date().toISOString() })
-      .in("id", unreadIds);
-  }
 
   return (
     <main className="page-shell">
