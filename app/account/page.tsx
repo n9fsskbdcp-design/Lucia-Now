@@ -103,8 +103,10 @@ export default async function AccountPage() {
     (item) => item.contact_status === "confirmed_pending_payment",
   );
 
-  const activeBookings = bookings.filter((item) =>
-    ["new", "contacted"].includes(item.contact_status),
+  const newRequests = bookings.filter((item) => item.contact_status === "new");
+
+  const contactedRequests = bookings.filter(
+    (item) => item.contact_status === "contacted",
   );
 
   const confirmedBookings = bookings.filter(
@@ -167,8 +169,19 @@ export default async function AccountPage() {
           />
         </div>
 
+        <nav className="mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-black/5">
+          <Jump href="#awaiting-payment" label={`Payment (${awaitingPayment.length})`} />
+          <Jump href="#new-requests" label={`New (${newRequests.length})`} />
+          <Jump href="#reviewed" label={`Reviewed (${contactedRequests.length})`} />
+          <Jump href="#confirmed" label={`Confirmed (${confirmedBookings.length})`} />
+          <Jump href="#closed" label={`Closed (${closedBookings.length})`} />
+        </nav>
+
         {awaitingPayment.length > 0 ? (
-          <section className="mt-6 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-xl sm:p-8">
+          <section
+            id="awaiting-payment"
+            className="mt-6 scroll-mt-24 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-xl sm:p-8"
+          >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm text-white/55">Action needed</p>
@@ -184,17 +197,35 @@ export default async function AccountPage() {
               ))}
             </div>
           </section>
-        ) : null}
+        ) : (
+          <EmptyAnchoredSection
+            id="awaiting-payment"
+            title="Payment"
+            emptyTitle="No payments needed"
+            emptyBody="Accepted bookings that need payment will appear here."
+          />
+        )}
 
         <BookingSection
-          title="Active requests"
-          subtitle="Requests waiting for partner review or follow-up."
-          emptyTitle="No active requests"
+          id="new-requests"
+          title="New requests"
+          subtitle="Requests waiting for partner review."
+          emptyTitle="No new requests"
           emptyBody="New booking requests will appear here."
-          bookings={activeBookings}
+          bookings={newRequests}
         />
 
         <BookingSection
+          id="reviewed"
+          title="Reviewed requests"
+          subtitle="Requests the partner has reviewed or contacted you about."
+          emptyTitle="No reviewed requests"
+          emptyBody="When a partner reviews your request, it will appear here."
+          bookings={contactedRequests}
+        />
+
+        <BookingSection
+          id="confirmed"
           title="Confirmed bookings"
           subtitle="Paid and secured experiences."
           emptyTitle="No confirmed bookings yet"
@@ -203,6 +234,7 @@ export default async function AccountPage() {
         />
 
         <BookingSection
+          id="closed"
           title="Closed requests"
           subtitle="Declined or cancelled requests."
           emptyTitle="No closed requests"
@@ -246,13 +278,51 @@ function SummaryCard({
   );
 }
 
+function Jump({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="shrink-0 rounded-full bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+    >
+      {label}
+    </Link>
+  );
+}
+
+function EmptyAnchoredSection({
+  id,
+  title,
+  emptyTitle,
+  emptyBody,
+}: {
+  id: string;
+  title: string;
+  emptyTitle: string;
+  emptyBody: string;
+}) {
+  return (
+    <section
+      id={id}
+      className="mt-6 scroll-mt-24 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
+    >
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      <div className="mt-6 rounded-3xl bg-neutral-50 p-8 text-center">
+        <p className="font-medium">{emptyTitle}</p>
+        <p className="mt-2 text-sm text-neutral-500">{emptyBody}</p>
+      </div>
+    </section>
+  );
+}
+
 function BookingSection({
+  id,
   title,
   subtitle,
   emptyTitle,
   emptyBody,
   bookings,
 }: {
+  id: string;
   title: string;
   subtitle: string;
   emptyTitle: string;
@@ -260,7 +330,10 @@ function BookingSection({
   bookings: any[];
 }) {
   return (
-    <section className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
+    <section
+      id={id}
+      className="mt-6 scroll-mt-24 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
+    >
       <div>
         <p className="text-sm text-neutral-500">Bookings</p>
         <h2 className="mt-1 text-2xl font-semibold">{title}</h2>

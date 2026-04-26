@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, ListChecks, Plus, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  ListChecks,
+  Plus,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -33,21 +42,64 @@ function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
   });
 }
 
-function badgeClass(label: string) {
-  if (label === "confirmed" || label === "paid_confirmed") return "bg-green-100 text-green-800";
-  if (label === "declined") return "bg-red-100 text-red-800";
-  if (label === "pending_payment" || label === "confirmed_pending_payment") return "bg-amber-100 text-amber-800";
+function statusLabel(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "new") return "New";
+  if (contactStatus === "contacted") return "Contacted";
+  if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
+    return "Paid & confirmed";
+  }
+  if (contactStatus === "declined") return "Declined";
+  if (contactStatus === "cancelled") return "Cancelled";
+  return contactStatus;
+}
+
+function badgeClass(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
+    return "bg-green-100 text-green-800";
+  }
+
+  if (contactStatus === "declined" || contactStatus === "cancelled") {
+    return "bg-red-100 text-red-800";
+  }
+
+  if (contactStatus === "confirmed_pending_payment") {
+    return "bg-amber-100 text-amber-800";
+  }
+
+  if (contactStatus === "contacted") {
+    return "bg-blue-100 text-blue-800";
+  }
+
   return "bg-neutral-100 text-neutral-700";
 }
 
-export default async function VendorPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string }>;
-}) {
-  const params = await searchParams;
-  const selectedStatus = params.status || "all";
+function statusIcon(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
+    return <CheckCircle2 size={15} />;
+  }
 
+  if (contactStatus === "declined" || contactStatus === "cancelled") {
+    return <XCircle size={15} />;
+  }
+
+  if (contactStatus === "confirmed_pending_payment") {
+    return <CreditCard size={15} />;
+  }
+
+  return <Clock size={15} />;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+export default async function VendorPage() {
   const supabase = await createClient();
 
   const {
@@ -111,21 +163,28 @@ export default async function VendorPage({
   const visibleSlots = slots.filter((slot) => !isBlocked(slot, blackouts));
   const leads = requests ?? [];
 
-  const filtered =
-    selectedStatus === "all"
-      ? leads
-      : leads.filter(
-          (item) =>
-            item.status === selectedStatus ||
-            item.contact_status === selectedStatus,
-        );
+  const newLeads = leads.filter((lead) => lead.contact_status === "new");
+  const contactedLeads = leads.filter(
+    (lead) => lead.contact_status === "contacted",
+  );
+  const awaitingPaymentLeads = leads.filter(
+    (lead) => lead.contact_status === "confirmed_pending_payment",
+  );
+  const confirmedLeads = leads.filter(
+    (lead) =>
+      lead.contact_status === "paid_confirmed" && lead.payment_status === "paid",
+  );
+  const closedLeads = leads.filter((lead) =>
+    ["declined", "cancelled"].includes(lead.contact_status),
+  );
 
   const liveCount = (experiences ?? []).filter(
     (item) => item.status === "published" && item.is_active,
   ).length;
 
-  const openSlotsCount = visibleSlots.filter((slot) => slot.status === "open").length;
-  const newLeadsCount = leads.filter((lead) => lead.status === "new").length;
+  const openSlotsCount = visibleSlots.filter(
+    (slot) => slot.status === "open",
+  ).length;
 
   return (
     <main className="page-shell">
@@ -163,82 +222,96 @@ export default async function VendorPage({
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric icon={<Sparkles size={20} />} label="Live experiences" value={liveCount} />
-          <Metric icon={<ListChecks size={20} />} label="Booking leads" value={leads.length} />
-          <Metric icon={<ListChecks size={20} />} label="New leads" value={newLeadsCount} />
-          <Metric icon={<CalendarDays size={20} />} label="Open slots" value={openSlotsCount} />
+          <Metric
+            icon={<Sparkles size={20} />}
+            label="Live experiences"
+            value={liveCount}
+          />
+          <Metric
+            icon={<ListChecks size={20} />}
+            label="Booking leads"
+            value={leads.length}
+          />
+          <Metric
+            icon={<ListChecks size={20} />}
+            label="New leads"
+            value={newLeads.length}
+            highlight={newLeads.length > 0}
+          />
+          <Metric
+            icon={<CalendarDays size={20} />}
+            label="Open slots"
+            value={openSlotsCount}
+          />
         </div>
 
-        <section className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm text-neutral-500">Leads</p>
-              <h2 className="mt-1 text-2xl font-semibold">Booking requests</h2>
-            </div>
+        <nav className="mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-black/5">
+          <Jump href="#new-leads" label={`New (${newLeads.length})`} />
+          <Jump
+            href="#contacted-leads"
+            label={`Contacted (${contactedLeads.length})`}
+          />
+          <Jump
+            href="#awaiting-payment"
+            label={`Awaiting payment (${awaitingPaymentLeads.length})`}
+          />
+          <Jump
+            href="#confirmed-leads"
+            label={`Confirmed (${confirmedLeads.length})`}
+          />
+          <Jump href="#closed-leads" label={`Closed (${closedLeads.length})`} />
+        </nav>
 
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {[
-                ["All", "all"],
-                ["New", "new"],
-                ["Contacted", "contacted"],
-                ["Awaiting payment", "confirmed_pending_payment"],
-                ["Confirmed", "confirmed"],
-                ["Declined", "declined"],
-              ].map(([label, value]) => (
-                <Link
-                  key={value}
-                  href={value === "all" ? "/vendor" : `/vendor?status=${value}`}
-                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium ${
-                    selectedStatus === value
-                      ? "bg-neutral-950 text-white"
-                      : "bg-neutral-100 text-neutral-700"
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
+        <LeadSection
+          id="new-leads"
+          eyebrow="Leads"
+          title="New booking requests"
+          subtitle="Requests waiting for your review."
+          emptyTitle="No new leads"
+          emptyBody="New traveler requests will appear here."
+          leads={newLeads}
+        />
 
-          {filtered.length === 0 ? (
-            <div className="mt-6 rounded-3xl bg-neutral-50 p-8 text-center text-neutral-500">
-              No leads for this filter.
-            </div>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {filtered.slice(0, 14).map((request) => (
-                <Link
-                  key={request.id}
-                  href={`/vendor/leads/${request.id}`}
-                  className="block rounded-3xl bg-neutral-50 p-4 transition hover:bg-neutral-100 sm:p-5"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {request.experiences?.title || "Experience"}
-                      </h3>
+        <LeadSection
+          id="contacted-leads"
+          eyebrow="Leads"
+          title="Contacted"
+          subtitle="Requests you have reviewed or followed up on."
+          emptyTitle="No contacted leads"
+          emptyBody="Leads marked contacted will appear here."
+          leads={contactedLeads}
+        />
 
-                      <p className="mt-2 text-sm text-neutral-500">
-                        {request.guest_name} · {request.guests} guest
-                        {request.guests === 1 ? "" : "s"}
-                      </p>
+        <LeadSection
+          id="awaiting-payment"
+          eyebrow="Leads"
+          title="Awaiting payment"
+          subtitle="Accepted requests waiting for the traveler to pay."
+          emptyTitle="No leads awaiting payment"
+          emptyBody="Accepted unpaid requests will appear here."
+          leads={awaitingPaymentLeads}
+          dark={awaitingPaymentLeads.length > 0}
+        />
 
-                      {request.requested_start_at ? (
-                        <p className="mt-1 text-sm text-neutral-500">
-                          {new Date(request.requested_start_at).toLocaleString()}
-                        </p>
-                      ) : null}
-                    </div>
+        <LeadSection
+          id="confirmed-leads"
+          eyebrow="Bookings"
+          title="Confirmed bookings"
+          subtitle="Paid and secured bookings."
+          emptyTitle="No confirmed bookings"
+          emptyBody="Paid bookings will appear here."
+          leads={confirmedLeads}
+        />
 
-                    <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(request.contact_status)}`}>
-                      {request.contact_status}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        <LeadSection
+          id="closed-leads"
+          eyebrow="Archive"
+          title="Closed requests"
+          subtitle="Declined or cancelled requests."
+          emptyTitle="No closed requests"
+          emptyBody="Declined or cancelled requests will appear here."
+          leads={closedLeads}
+        />
       </section>
     </main>
   );
@@ -248,16 +321,144 @@ function Metric({
   icon,
   label,
   value,
+  highlight = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
+  highlight?: boolean;
 }) {
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+    <div
+      className={`rounded-3xl p-5 shadow-sm ring-1 ring-black/5 ${
+        highlight ? "bg-amber-50" : "bg-white"
+      }`}
+    >
       <div className="text-neutral-500">{icon}</div>
       <p className="mt-4 text-sm text-neutral-500">{label}</p>
       <p className="mt-1 text-3xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function Jump({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="shrink-0 rounded-full bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+    >
+      {label}
+    </Link>
+  );
+}
+
+function LeadSection({
+  id,
+  eyebrow,
+  title,
+  subtitle,
+  emptyTitle,
+  emptyBody,
+  leads,
+  dark = false,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  emptyTitle: string;
+  emptyBody: string;
+  leads: any[];
+  dark?: boolean;
+}) {
+  return (
+    <section
+      id={id}
+      className={`mt-6 scroll-mt-24 rounded-[2rem] p-5 shadow-sm ring-1 sm:p-8 ${
+        dark
+          ? "bg-neutral-950 text-white ring-neutral-950"
+          : "bg-white ring-black/5"
+      }`}
+    >
+      <div>
+        <p className={dark ? "text-sm text-white/55" : "text-sm text-neutral-500"}>
+          {eyebrow}
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
+        <p className={dark ? "mt-2 text-sm text-white/60" : "mt-2 text-sm text-neutral-500"}>
+          {subtitle}
+        </p>
+      </div>
+
+      {leads.length === 0 ? (
+        <div
+          className={`mt-6 rounded-3xl p-8 text-center ${
+            dark ? "bg-white/10 text-white/65" : "bg-neutral-50 text-neutral-500"
+          }`}
+        >
+          <p className="font-medium">{emptyTitle}</p>
+          <p className="mt-2 text-sm">{emptyBody}</p>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-3">
+          {leads.map((request) => (
+            <LeadCard key={request.id} request={request} dark={dark} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LeadCard({ request, dark = false }: { request: any; dark?: boolean }) {
+  const requestedTime = formatDate(request.requested_start_at);
+
+  return (
+    <Link
+      href={`/vendor/leads/${request.id}`}
+      className={`block rounded-3xl p-4 transition sm:p-5 ${
+        dark
+          ? "bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15"
+          : "bg-neutral-50 hover:bg-neutral-100"
+      }`}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold">
+            {request.experiences?.title || "Experience"}
+          </h3>
+
+          <div
+            className={`mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm ${
+              dark ? "text-white/65" : "text-neutral-500"
+            }`}
+          >
+            <span>{request.guest_name}</span>
+            <span>
+              {request.guests} guest{request.guests === 1 ? "" : "s"}
+            </span>
+            {requestedTime ? <span>{requestedTime}</span> : null}
+          </div>
+        </div>
+
+        <span
+          className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(
+            request.contact_status,
+            request.payment_status,
+          )}`}
+        >
+          {statusIcon(request.contact_status, request.payment_status)}
+          {statusLabel(request.contact_status, request.payment_status)}
+        </span>
+      </div>
+
+      <p
+        className={`mt-4 text-sm font-medium ${
+          dark ? "text-white" : "text-neutral-950"
+        }`}
+      >
+        Open lead →
+      </p>
+    </Link>
   );
 }

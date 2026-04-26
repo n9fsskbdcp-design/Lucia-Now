@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CreditCard,
   MessageCircle,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -48,7 +49,13 @@ function formatDate(value: string) {
   });
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage(props: {
+  searchParams: Promise<{
+    cleared?: string;
+    error?: string;
+  }>;
+}) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
 
   const {
@@ -98,6 +105,18 @@ export default async function NotificationsPage() {
       <MarkNotificationsReadRefresh />
 
       <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
+        {searchParams.cleared ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Alerts cleared.
+          </div>
+        ) : null}
+
+        {searchParams.error ? (
+          <div className="mb-4 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
+            {searchParams.error}
+          </div>
+        ) : null}
+
         <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -114,9 +133,20 @@ export default async function NotificationsPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white/10 px-5 py-4 ring-1 ring-white/10">
-              <p className="text-sm text-white/60">Unread</p>
-              <p className="mt-1 text-3xl font-semibold">{unread.length}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl bg-white/10 px-5 py-4 ring-1 ring-white/10">
+                <p className="text-sm text-white/60">Unread</p>
+                <p className="mt-1 text-3xl font-semibold">{unread.length}</p>
+              </div>
+
+              {items.length > 0 ? (
+                <form action="/api/notifications/clear" method="post">
+                  <button className="inline-flex items-center rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-neutral-950">
+                    <Trash2 className="mr-2" size={17} />
+                    Clear all
+                  </button>
+                </form>
+              ) : null}
             </div>
           </div>
         </div>
@@ -126,7 +156,7 @@ export default async function NotificationsPage() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
               <Bell size={24} />
             </div>
-            <h2 className="mt-5 text-xl font-semibold">No alerts yet</h2>
+            <h2 className="mt-5 text-xl font-semibold">No alerts</h2>
             <p className="mt-2 text-sm text-neutral-500">
               Important booking and message activity will appear here.
             </p>
@@ -135,7 +165,7 @@ export default async function NotificationsPage() {
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="space-y-6">
               {unread.length > 0 ? (
-                <section>
+                <section id="new" className="scroll-mt-24">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-semibold">New</h2>
                     <span className="rounded-full bg-neutral-950 px-3 py-1 text-xs font-semibold text-white">
@@ -151,7 +181,7 @@ export default async function NotificationsPage() {
                 </section>
               ) : null}
 
-              <section>
+              <section id="earlier" className="scroll-mt-24">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">
                     {unread.length > 0 ? "Earlier" : "Recent"}
@@ -172,30 +202,39 @@ export default async function NotificationsPage() {
               </section>
             </div>
 
-            <aside className="h-fit rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5">
-              <h2 className="text-lg font-semibold">Alert types</h2>
+            <aside className="h-fit rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 lg:sticky lg:top-24">
+              <h2 className="text-lg font-semibold">Jump to</h2>
 
-              <div className="mt-4 space-y-3">
-                <MiniLegend
-                  icon={<CalendarCheck size={18} />}
-                  title="Bookings"
-                  body="New requests and booking activity."
-                />
-                <MiniLegend
-                  icon={<CheckCircle2 size={18} />}
-                  title="Status"
-                  body="Accepted, declined, or updated requests."
-                />
-                <MiniLegend
-                  icon={<CreditCard size={18} />}
-                  title="Payments"
-                  body="Payment prompts and confirmations."
-                />
-                <MiniLegend
-                  icon={<MessageCircle size={18} />}
-                  title="Messages"
-                  body="Traveler and partner replies."
-                />
+              <div className="mt-4 grid gap-2">
+                <Jump href="#new" label={`New (${unread.length})`} />
+                <Jump href="#earlier" label={`Earlier (${read.length})`} />
+              </div>
+
+              <div className="mt-6 border-t pt-5">
+                <h2 className="text-lg font-semibold">Alert types</h2>
+
+                <div className="mt-4 space-y-3">
+                  <MiniLegend
+                    icon={<CalendarCheck size={18} />}
+                    title="Bookings"
+                    body="New requests and booking activity."
+                  />
+                  <MiniLegend
+                    icon={<CheckCircle2 size={18} />}
+                    title="Status"
+                    body="Accepted, declined, or updated requests."
+                  />
+                  <MiniLegend
+                    icon={<CreditCard size={18} />}
+                    title="Payments"
+                    body="Payment prompts and confirmations."
+                  />
+                  <MiniLegend
+                    icon={<MessageCircle size={18} />}
+                    title="Messages"
+                    body="Traveler and partner replies."
+                  />
+                </div>
               </div>
             </aside>
           </div>
@@ -272,6 +311,17 @@ function NotificationCard({
           </p>
         </div>
       </div>
+    </Link>
+  );
+}
+
+function Jump({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+    >
+      {label}
     </Link>
   );
 }
