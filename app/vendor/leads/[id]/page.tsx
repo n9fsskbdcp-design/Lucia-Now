@@ -6,10 +6,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import MessageThread from "@/components/booking/message-thread";
 
 function prettyStatus(label: string) {
+  if (label === "new") return "New";
   if (label === "confirmed_pending_payment") return "Awaiting payment";
   if (label === "paid_confirmed") return "Paid & confirmed";
   if (label === "contacted") return "Contacted";
   if (label === "declined") return "Declined";
+  if (label === "cancelled") return "Cancelled";
   return label;
 }
 
@@ -26,6 +28,10 @@ function actionMessage(status: string, paymentStatus: string) {
     return "This request has been declined.";
   }
 
+  if (status === "cancelled") {
+    return "This request has been cancelled.";
+  }
+
   if (status === "contacted") {
     return "Marked as contacted. You can still accept for payment or decline.";
   }
@@ -33,16 +39,37 @@ function actionMessage(status: string, paymentStatus: string) {
   return "Review the request, message the traveler if needed, then accept or decline.";
 }
 
-export default async function VendorLeadDetailPage(
-  props: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{
-      updated?: string;
-      notes?: string;
-      error?: string;
-    }>;
-  },
-) {
+function canMarkContacted(status: string, paymentStatus: string) {
+  return paymentStatus !== "paid" && status === "new";
+}
+
+function canAccept(status: string, paymentStatus: string) {
+  return paymentStatus !== "paid" && ["new", "contacted"].includes(status);
+}
+
+function canDecline(status: string, paymentStatus: string) {
+  return (
+    paymentStatus !== "paid" &&
+    ["new", "contacted", "confirmed_pending_payment"].includes(status)
+  );
+}
+
+function canCancel(status: string, paymentStatus: string) {
+  return (
+    paymentStatus !== "paid" &&
+    ["new", "contacted", "confirmed_pending_payment"].includes(status)
+  );
+}
+
+export default async function VendorLeadDetailPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    updated?: string;
+    notes?: string;
+    error?: string;
+    cancelled?: string;
+  }>;
+}) {
   const { id } = await props.params;
   const searchParams = await props.searchParams;
 
@@ -113,6 +140,12 @@ export default async function VendorLeadDetailPage(
           </div>
         ) : null}
 
+        {searchParams.cancelled ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Booking request cancelled.
+          </div>
+        ) : null}
+
         {searchParams.notes === "saved" ? (
           <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
             Vendor notes saved.
@@ -175,14 +208,16 @@ export default async function VendorLeadDetailPage(
               </div>
             ) : null}
 
-            <div className="mt-5">
-              <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                <input type="hidden" name="contact_status" value="contacted" />
-                <button className="rounded-full bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-800">
-                  Mark contacted
-                </button>
-              </form>
-            </div>
+            {canMarkContacted(lead.contact_status, lead.payment_status) ? (
+              <div className="mt-5">
+                <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                  <input type="hidden" name="contact_status" value="contacted" />
+                  <button className="rounded-full bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-800">
+                    Mark contacted
+                  </button>
+                </form>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
@@ -206,23 +241,35 @@ export default async function VendorLeadDetailPage(
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                  <input
-                    type="hidden"
-                    name="contact_status"
-                    value="confirmed_pending_payment"
-                  />
-                  <button className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white">
-                    Accept & request payment
-                  </button>
-                </form>
+                {canAccept(lead.contact_status, lead.payment_status) ? (
+                  <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                    <input
+                      type="hidden"
+                      name="contact_status"
+                      value="confirmed_pending_payment"
+                    />
+                    <button className="rounded-full bg-neutral-950 px-5 py-3 text-sm font-medium text-white">
+                      Accept & request payment
+                    </button>
+                  </form>
+                ) : null}
 
-                <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
-                  <input type="hidden" name="contact_status" value="declined" />
-                  <button className="rounded-full bg-white px-5 py-3 text-sm font-medium text-red-600 shadow-sm ring-1 ring-black/5">
-                    Decline
-                  </button>
-                </form>
+                {canDecline(lead.contact_status, lead.payment_status) ? (
+                  <form action={`/api/vendor/leads/${lead.id}/status`} method="post">
+                    <input type="hidden" name="contact_status" value="declined" />
+                    <button className="rounded-full bg-white px-5 py-3 text-sm font-medium text-red-600 shadow-sm ring-1 ring-black/5">
+                      Decline
+                    </button>
+                  </form>
+                ) : null}
+
+                {canCancel(lead.contact_status, lead.payment_status) ? (
+                  <form action={`/api/bookings/${lead.id}/cancel`} method="post">
+                    <button className="rounded-full bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
+                      Cancel request
+                    </button>
+                  </form>
+                ) : null}
               </div>
             </div>
 

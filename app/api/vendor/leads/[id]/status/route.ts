@@ -3,18 +3,24 @@ import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const allowed = [
-  "new",
   "contacted",
   "confirmed_pending_payment",
-  "paid_confirmed",
   "declined",
 ] as const;
+
+const transitions: Record<string, string[]> = {
+  new: ["contacted", "confirmed_pending_payment", "declined"],
+  contacted: ["confirmed_pending_payment", "declined"],
+  confirmed_pending_payment: ["declined"],
+  paid_confirmed: [],
+  declined: [],
+  cancelled: [],
+};
 
 function notificationTitle(state: string) {
   if (state === "confirmed_pending_payment") return "Booking accepted";
   if (state === "declined") return "Booking declined";
   if (state === "contacted") return "Booking request updated";
-  if (state === "paid_confirmed") return "Booking confirmed";
   return "Booking updated";
 }
 
@@ -28,14 +34,42 @@ function notificationBody(state: string) {
   }
 
   if (state === "contacted") {
-    return "The partner reviewed or contacted you about your request.";
+    return "The partner reviewed your booking request.";
   }
 
-  if (state === "paid_confirmed") {
-    return "Your booking is paid and confirmed.";
+  return "Your booking request was updated.";
+}
+
+function statusPayload(nextState: string) {
+  if (nextState === "contacted") {
+    return {
+      status: "contacted",
+      contact_status: "contacted",
+      payment_status: "unpaid",
+      status_updated_at: new Date().toISOString(),
+    };
   }
 
-  return `Your booking status changed to ${state}.`;
+  if (nextState === "confirmed_pending_payment") {
+    return {
+      status: "pending_payment",
+      contact_status: "confirmed_pending_payment",
+      payment_status: "unpaid",
+      confirmed_at: new Date().toISOString(),
+      status_updated_at: new Date().toISOString(),
+    };
+  }
+
+  if (nextState === "declined") {
+    return {
+      status: "declined",
+      contact_status: "declined",
+      payment_status: "unpaid",
+      status_updated_at: new Date().toISOString(),
+    };
+  }
+
+  return {};
 }
 
 export async function POST(
@@ -73,6 +107,9 @@ export async function POST(
       user_id,
       guest_email,
       guest_name,
+      status,
+      contact_status,
+      payment_status,
       experiences (
         title
       )
@@ -101,45 +138,46 @@ export async function POST(
   const nextState = String(formData.get("contact_status") || "");
 
   if (!allowed.includes(nextState as (typeof allowed)[number])) {
-    return NextResponse.redirect(new URL(`/vendor/leads/${id}`, request.url));
+    return NextResponse.redirect(
+      new URL(`/vendor/leads/${id}?error=Invalid status`, request.url),
+    );
   }
 
-  const payload: Record<string, unknown> = {
-    contact_status: nextState,
-  };
+  const currentState = lead.contact_status || "new";
 
-  if (nextState === "new") {
-    payload.status = "new";
-    payload.payment_status = "unpaid";
+  if (currentState === nextState) {
+    return NextResponse.redirect(
+      new URL(`/vendor/leads/${id}?error=Status is already ${nextState}`, request.url),
+    );
   }
 
-  if (nextState === "contacted") {
-    payload.status = "contacted";
-    payload.payment_status = "unpaid";
+  const allowedNextStates = transitions[currentState] ?? [];
+
+  if (!allowedNextStates.includes(nextState)) {
+    return NextResponse.redirect(
+      new URL(
+        `/vendor/leads/${id}?error=This status change is not allowed`,
+        request.url,
+      ),
+    );
   }
 
-  if (nextState === "confirmed_pending_payment") {
-    payload.status = "pending_payment";
-    payload.payment_status = "unpaid";
-    payload.confirmed_at = new Date().toISOString();
+  if (lead.payment_status === "paid") {
+    return NextResponse.redirect(
+      new URL(
+        `/vendor/leads/${id}?error=Paid bookings cannot be changed here`,
+        request.url,
+      ),
+    );
   }
 
-  if (nextState === "paid_confirmed") {
-    payload.status = "confirmed";
-    payload.payment_status = "paid";
-    payload.confirmed_at = new Date().toISOString();
-    payload.paid_at = new Date().toISOString();
-  }
-
-  if (nextState === "declined") {
-    payload.status = "declined";
-    payload.payment_status = "unpaid";
-  }
+  const payload = statusPayload(nextState);
 
   const { error } = await supabaseAdmin
     .from("booking_requests")
     .update(payload)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("contact_status", currentState);
 
   if (error) {
     return NextResponse.redirect(
@@ -156,9 +194,8 @@ export async function POST(
     subject: `Booking update: ${notificationTitle(nextState)}`,
     payload: {
       booking_request_id: id,
+      previous_contact_status: currentState,
       contact_status: nextState,
-      status: payload.status,
-      payment_status: payload.payment_status,
     },
   });
 
@@ -174,12 +211,15 @@ export async function POST(
       });
 
     if (appNotificationError) {
-      console.error("Status app notification failed:", appNotificationError);
+      return NextResponse.redirect(
+        new URL(
+          `/vendor/leads/${id}?error=${encodeURIComponent(
+            `Status changed, but notification failed: ${appNotificationError.message}`,
+          )}`,
+          request.url,
+        ),
+      );
     }
-  } else {
-    console.warn(
-      `No in-app status notification created for booking ${id} because lead.user_id is null.`,
-    );
   }
 
   return NextResponse.redirect(

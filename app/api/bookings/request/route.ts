@@ -119,6 +119,7 @@ export async function POST(request: Request) {
         status: "new",
         contact_status: "new",
         payment_status: "unpaid",
+        status_updated_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -152,26 +153,23 @@ export async function POST(request: Request) {
       });
 
     if (vendorNotificationError) {
-      console.error("Vendor app notification failed:", vendorNotificationError);
+      return NextResponse.json(
+        {
+          error: `Booking created, but vendor notification failed: ${vendorNotificationError.message}`,
+          booking_request_id: inserted.id,
+        },
+        { status: 500 },
+      );
     }
 
     if (user?.id) {
-      const { error: touristNotificationError } = await supabaseAdmin
-        .from("app_notifications")
-        .insert({
-          user_id: user.id,
-          type: "booking_request_sent",
-          title: "Booking request sent",
-          body: `Your request for ${experience.title} was sent to the partner.`,
-          href: `/account/bookings/${inserted.id}`,
-        });
-
-      if (touristNotificationError) {
-        console.error(
-          "Tourist app notification failed:",
-          touristNotificationError,
-        );
-      }
+      await supabaseAdmin.from("app_notifications").insert({
+        user_id: user.id,
+        type: "booking_request_sent",
+        title: "Booking request sent",
+        body: `Your request for ${experience.title} was sent to the partner.`,
+        href: `/account/bookings/${inserted.id}`,
+      });
     }
 
     return NextResponse.json({

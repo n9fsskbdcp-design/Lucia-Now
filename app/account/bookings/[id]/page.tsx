@@ -18,6 +18,10 @@ function headline(contactStatus: string, paymentStatus: string) {
     return "Request declined";
   }
 
+  if (contactStatus === "cancelled") {
+    return "Request cancelled";
+  }
+
   if (contactStatus === "contacted") {
     return "Vendor reviewed your request";
   }
@@ -25,12 +29,34 @@ function headline(contactStatus: string, paymentStatus: string) {
   return "Request sent";
 }
 
-export default async function AccountBookingDetailPage(
-  props: {
-    params: Promise<{ id: string }>;
-  },
-) {
+function prettyStatus(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "new") return "New";
+  if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
+    return "Paid & confirmed";
+  }
+  if (contactStatus === "contacted") return "Contacted";
+  if (contactStatus === "declined") return "Declined";
+  if (contactStatus === "cancelled") return "Cancelled";
+  return contactStatus;
+}
+
+function canCancel(contactStatus: string, paymentStatus: string) {
+  return (
+    paymentStatus !== "paid" &&
+    ["new", "contacted", "confirmed_pending_payment"].includes(contactStatus)
+  );
+}
+
+export default async function AccountBookingDetailPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    error?: string;
+    cancelled?: string;
+  }>;
+}) {
   const { id } = await props.params;
+  const searchParams = await props.searchParams;
 
   const supabase = await createClient();
 
@@ -94,6 +120,18 @@ export default async function AccountBookingDetailPage(
           Back to account
         </Link>
 
+        {searchParams.cancelled ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Booking request cancelled.
+          </div>
+        ) : null}
+
+        {searchParams.error ? (
+          <div className="mb-4 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
+            {searchParams.error}
+          </div>
+        ) : null}
+
         <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
           <p className="text-sm text-white/55">Booking request</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">
@@ -103,40 +141,56 @@ export default async function AccountBookingDetailPage(
             {headline(request.contact_status, request.payment_status)}
           </p>
 
-          {request.contact_status === "confirmed_pending_payment" ? (
-            <Link
-              href={`/account/bookings/${request.id}/pay`}
-              className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-950"
-            >
-              Continue to payment
-            </Link>
-          ) : null}
+          <div className="mt-6 flex flex-wrap gap-3">
+            {request.contact_status === "confirmed_pending_payment" ? (
+              <Link
+                href={`/account/bookings/${request.id}/pay`}
+                className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-950"
+              >
+                Continue to payment
+              </Link>
+            ) : null}
+
+            {canCancel(request.contact_status, request.payment_status) ? (
+              <form action={`/api/bookings/${request.id}/cancel`} method="post">
+                <button className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white ring-1 ring-white/15">
+                  Cancel request
+                </button>
+              </form>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
           <h2 className="text-2xl font-semibold">Progress</h2>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-4">
-            {timeline.map((step) => (
-              <div
-                key={step.label}
-                className={`rounded-3xl p-4 ${
-                  step.active
-                    ? "bg-green-50 text-green-800"
-                    : "bg-neutral-50 text-neutral-500"
-                }`}
-              >
-                <p className="text-sm font-semibold">{step.label}</p>
-              </div>
-            ))}
-          </div>
+          {["declined", "cancelled"].includes(request.contact_status) ? (
+            <div className="mt-6 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
+              This request is {prettyStatus(request.contact_status, request.payment_status).toLowerCase()}.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-3 sm:grid-cols-4">
+              {timeline.map((step) => (
+                <div
+                  key={step.label}
+                  className={`rounded-3xl p-4 ${
+                    step.active
+                      ? "bg-green-50 text-green-800"
+                      : "bg-neutral-50 text-neutral-500"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{step.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <Info label="Guests" value={String(request.guests)} />
             <Info label="Payment" value={request.payment_status} />
             <Info
               label="Status"
-              value={request.contact_status || request.status}
+              value={prettyStatus(request.contact_status, request.payment_status)}
             />
           </div>
 
