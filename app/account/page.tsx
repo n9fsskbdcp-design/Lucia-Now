@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   AlertCircle,
+  Archive,
   CalendarDays,
   CheckCircle2,
   Clock,
   Compass,
   CreditCard,
+  RotateCcw,
   User,
   XCircle,
 } from "lucide-react";
@@ -65,6 +67,14 @@ function statusIcon(contactStatus: string, paymentStatus: string) {
   return <Clock size={18} />;
 }
 
+function canArchive(contactStatus: string, paymentStatus: string) {
+  if (contactStatus === "declined") return true;
+  if (contactStatus === "cancelled") return true;
+  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") return true;
+
+  return false;
+}
+
 function formatDate(value: string | null) {
   if (!value) return null;
 
@@ -74,7 +84,14 @@ function formatDate(value: string | null) {
   });
 }
 
-export default async function AccountPage() {
+export default async function AccountPage(props: {
+  searchParams: Promise<{
+    archived?: string;
+    restored?: string;
+  }>;
+}) {
+  const searchParams = await props.searchParams;
+
   const supabase = await createClient();
 
   const {
@@ -97,7 +114,9 @@ export default async function AccountPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const bookings = requests ?? [];
+  const allBookings = requests ?? [];
+  const bookings = allBookings.filter((item) => !item.archived_by_tourist);
+  const archivedBookings = allBookings.filter((item) => item.archived_by_tourist);
 
   const awaitingPayment = bookings.filter(
     (item) => item.contact_status === "confirmed_pending_payment",
@@ -121,6 +140,18 @@ export default async function AccountPage() {
   return (
     <main className="page-shell">
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+        {searchParams.archived ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Booking moved to archive.
+          </div>
+        ) : null}
+
+        {searchParams.restored ? (
+          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+            Booking restored.
+          </div>
+        ) : null}
+
         <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
           <p className="text-sm text-neutral-500">Traveler account</p>
 
@@ -130,7 +161,7 @@ export default async function AccountPage() {
                 Your trips and requests
               </h1>
               <p className="mt-2 max-w-2xl text-neutral-600">
-                Track booking requests, payment prompts, confirmations, and messages in one place.
+                Track active requests, payments, confirmations, and archived history.
               </p>
             </div>
 
@@ -153,7 +184,7 @@ export default async function AccountPage() {
           />
           <SummaryCard
             icon={<CalendarDays size={20} />}
-            label="Total requests"
+            label="Active requests"
             value={String(bookings.length)}
           />
           <SummaryCard
@@ -163,9 +194,9 @@ export default async function AccountPage() {
             highlight={awaitingPayment.length > 0}
           />
           <SummaryCard
-            icon={<CheckCircle2 size={20} />}
-            label="Confirmed"
-            value={String(confirmedBookings.length)}
+            icon={<Archive size={20} />}
+            label="Archived"
+            value={String(archivedBookings.length)}
           />
         </div>
 
@@ -175,6 +206,7 @@ export default async function AccountPage() {
           <Jump href="#reviewed" label={`Reviewed (${contactedRequests.length})`} />
           <Jump href="#confirmed" label={`Confirmed (${confirmedBookings.length})`} />
           <Jump href="#closed" label={`Closed (${closedBookings.length})`} />
+          <Jump href="#archived" label={`Archived (${archivedBookings.length})`} />
         </nav>
 
         {awaitingPayment.length > 0 ? (
@@ -182,14 +214,10 @@ export default async function AccountPage() {
             id="awaiting-payment"
             className="mt-6 scroll-mt-24 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-xl sm:p-8"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm text-white/55">Action needed</p>
-                <h2 className="mt-1 text-2xl font-semibold">
-                  Complete payment to secure your booking
-                </h2>
-              </div>
-            </div>
+            <p className="text-sm text-white/55">Action needed</p>
+            <h2 className="mt-1 text-2xl font-semibold">
+              Complete payment to secure your booking
+            </h2>
 
             <div className="mt-5 grid gap-3">
               {awaitingPayment.map((request) => (
@@ -236,10 +264,20 @@ export default async function AccountPage() {
         <BookingSection
           id="closed"
           title="Closed requests"
-          subtitle="Declined or cancelled requests."
+          subtitle="Declined or cancelled requests. You can archive these to clean up your dashboard."
           emptyTitle="No closed requests"
           emptyBody="Cancelled or declined requests will appear here."
           bookings={closedBookings}
+        />
+
+        <BookingSection
+          id="archived"
+          title="Archived history"
+          subtitle="Hidden from your main dashboard, but kept for records."
+          emptyTitle="No archived bookings"
+          emptyBody="Archived bookings will appear here."
+          bookings={archivedBookings}
+          archived
         />
       </section>
     </main>
@@ -321,6 +359,7 @@ function BookingSection({
   emptyTitle,
   emptyBody,
   bookings,
+  archived = false,
 }: {
   id: string;
   title: string;
@@ -328,6 +367,7 @@ function BookingSection({
   emptyTitle: string;
   emptyBody: string;
   bookings: any[];
+  archived?: boolean;
 }) {
   return (
     <section
@@ -348,7 +388,7 @@ function BookingSection({
       ) : (
         <div className="mt-6 grid gap-3">
           {bookings.map((request) => (
-            <BookingCard key={request.id} request={request} />
+            <BookingCard key={request.id} request={request} archived={archived} />
           ))}
         </div>
       )}
@@ -359,60 +399,96 @@ function BookingSection({
 function BookingCard({
   request,
   dark = false,
+  archived = false,
 }: {
   request: any;
   dark?: boolean;
+  archived?: boolean;
 }) {
   const requestedTime = formatDate(request.requested_start_at);
+  const archiveAllowed = canArchive(request.contact_status, request.payment_status);
 
   return (
-    <Link
-      href={`/account/bookings/${request.id}`}
-      className={`block rounded-3xl p-4 transition sm:p-5 ${
+    <div
+      className={`rounded-3xl p-4 transition sm:p-5 ${
         dark
-          ? "bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/15"
-          : "bg-neutral-50 hover:bg-neutral-100"
+          ? "bg-white/10 text-white ring-1 ring-white/10"
+          : "bg-neutral-50"
       }`}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold">
-            {request.experiences?.title || "Experience"}
-          </h3>
+      <Link href={`/account/bookings/${request.id}`} className="block">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold">
+              {request.experiences?.title || "Experience"}
+            </h3>
 
-          <div
-            className={`mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm ${
-              dark ? "text-white/65" : "text-neutral-500"
-            }`}
-          >
-            <span>
-              {request.guests} guest{request.guests === 1 ? "" : "s"}
-            </span>
+            <div
+              className={`mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm ${
+                dark ? "text-white/65" : "text-neutral-500"
+              }`}
+            >
+              <span>
+                {request.guests} guest{request.guests === 1 ? "" : "s"}
+              </span>
 
-            {requestedTime ? <span>{requestedTime}</span> : null}
+              {requestedTime ? <span>{requestedTime}</span> : null}
+            </div>
           </div>
+
+          <span
+            className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusClass(
+              request.contact_status,
+              request.payment_status,
+            )}`}
+          >
+            {statusIcon(request.contact_status, request.payment_status)}
+            {prettyStatus(request.contact_status, request.payment_status)}
+          </span>
         </div>
 
-        <span
-          className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusClass(
-            request.contact_status,
-            request.payment_status,
-          )}`}
+        <p
+          className={`mt-4 text-sm font-medium ${
+            dark ? "text-white" : "text-neutral-950"
+          }`}
         >
-          {statusIcon(request.contact_status, request.payment_status)}
-          {prettyStatus(request.contact_status, request.payment_status)}
-        </span>
-      </div>
+          {request.contact_status === "confirmed_pending_payment"
+            ? "Continue to payment →"
+            : "View details →"}
+        </p>
+      </Link>
 
-      {request.contact_status === "confirmed_pending_payment" ? (
-        <p className={`mt-4 text-sm font-medium ${dark ? "text-white" : "text-neutral-950"}`}>
-          Continue to payment →
-        </p>
-      ) : (
-        <p className={`mt-4 text-sm font-medium ${dark ? "text-white" : "text-neutral-950"}`}>
-          View details →
-        </p>
-      )}
-    </Link>
+      {archiveAllowed ? (
+        <form
+          action={
+            archived
+              ? `/api/bookings/${request.id}/unarchive`
+              : `/api/bookings/${request.id}/archive`
+          }
+          method="post"
+          className="mt-4"
+        >
+          <button
+            className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
+              dark
+                ? "bg-white/10 text-white ring-1 ring-white/15"
+                : "bg-white text-neutral-700 shadow-sm ring-1 ring-black/5"
+            }`}
+          >
+            {archived ? (
+              <>
+                <RotateCcw className="mr-2" size={16} />
+                Restore
+              </>
+            ) : (
+              <>
+                <Archive className="mr-2" size={16} />
+                Archive
+              </>
+            )}
+          </button>
+        </form>
+      ) : null}
+    </div>
   );
 }
