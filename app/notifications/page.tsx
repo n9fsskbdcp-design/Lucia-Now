@@ -37,10 +37,11 @@ export default async function NotificationsPage() {
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    query = query.eq(
-      "vendor_id",
-      vendor?.id || "00000000-0000-0000-0000-000000000000",
-    );
+    if (vendor?.id) {
+      query = query.or(`user_id.eq.${user.id},vendor_id.eq.${vendor.id}`);
+    } else {
+      query = query.eq("user_id", user.id);
+    }
   } else {
     query = query.eq("user_id", user.id);
   }
@@ -58,7 +59,7 @@ export default async function NotificationsPage() {
             Notifications
           </h1>
           <p className="mt-3 max-w-xl text-white/65">
-            Booking updates, payment prompts, and platform alerts.
+            Booking updates, payment prompts, messages, and platform alerts.
           </p>
         </div>
 

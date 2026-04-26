@@ -14,12 +14,20 @@ export async function getUnreadAppNotificationCount({
       .eq("owner_user_id", userId)
       .maybeSingle();
 
-    if (!vendor) return 0;
+    if (!vendor) {
+      const { count } = await supabaseAdmin
+        .from("app_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("read_at", null);
+
+      return count ?? 0;
+    }
 
     const { count } = await supabaseAdmin
       .from("app_notifications")
       .select("id", { count: "exact", head: true })
-      .eq("vendor_id", vendor.id)
+      .or(`user_id.eq.${userId},vendor_id.eq.${vendor.id}`)
       .is("read_at", null);
 
     return count ?? 0;

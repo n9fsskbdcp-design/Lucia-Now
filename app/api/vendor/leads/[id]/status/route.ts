@@ -13,6 +13,37 @@ const transitions: Record<string, string[]> = {
   cancelled: [],
 };
 
+type AppNotificationInput = {
+  user_id?: string | null;
+  vendor_id?: string | null;
+  type: string;
+  title: string;
+  body: string;
+  href: string;
+};
+
+async function createAppNotification(input: AppNotificationInput) {
+  const payload = {
+    user_id: input.user_id || null,
+    vendor_id: input.vendor_id || null,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    href: input.href,
+  };
+
+  const first = await supabaseAdmin.from("app_notifications").insert(payload);
+
+  if (!first.error) return null;
+
+  const fallback = await supabaseAdmin.from("app_notifications").insert({
+    ...payload,
+    type: "booking_message",
+  });
+
+  return fallback.error;
+}
+
 function notificationTitle(state: string) {
   if (state === "confirmed_pending_payment") return "Booking accepted";
   if (state === "declined") return "Booking declined";
@@ -196,13 +227,33 @@ export async function POST(
   });
 
   if (lead.user_id) {
-    await supabaseAdmin.from("app_notifications").insert({
+    const notificationError = await createAppNotification({
       user_id: lead.user_id,
       type: "booking_status_update",
       title: notificationTitle(nextState),
       body: notificationBody(nextState),
       href: `/account/bookings/${id}`,
     });
+
+    if (notificationError) {
+      return NextResponse.redirect(
+        new URL(
+          `/vendor/leads/${id}?error=${encodeURIComponent(
+            `Status changed, but notification failed: ${notificationError.message}`,
+          )}`,
+          request.url,
+        ),
+      );
+    }
+  } else {
+    return NextResponse.redirect(
+      new URL(
+        `/vendor/leads/${id}?updated=${nextState}&error=${encodeURIComponent(
+          "Status changed, but this booking has no linked tourist account for in-app alerts.",
+        )}`,
+        request.url,
+      ),
+    );
   }
 
   return NextResponse.redirect(

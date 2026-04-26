@@ -35,11 +35,11 @@ export async function POST() {
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (!vendor) {
-      return NextResponse.json({ success: true, updated: 0 });
+    if (vendor?.id) {
+      query = query.or(`user_id.eq.${user.id},vendor_id.eq.${vendor.id}`);
+    } else {
+      query = query.eq("user_id", user.id);
     }
-
-    query = query.eq("vendor_id", vendor.id);
   } else {
     query = query.eq("user_id", user.id);
   }

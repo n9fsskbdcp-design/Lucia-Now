@@ -8,6 +8,15 @@ type BlackoutRow = {
   ends_at: string;
 };
 
+type AppNotificationInput = {
+  user_id?: string | null;
+  vendor_id?: string | null;
+  type: string;
+  title: string;
+  body: string;
+  href: string;
+};
+
 function isBlocked(startsAt: string, endsAt: string, blackouts: BlackoutRow[]) {
   const slotStart = new Date(startsAt).getTime();
   const slotEnd = new Date(endsAt).getTime();
@@ -18,6 +27,28 @@ function isBlocked(startsAt: string, endsAt: string, blackouts: BlackoutRow[]) {
 
     return slotStart < blackoutEnd && slotEnd > blackoutStart;
   });
+}
+
+async function createAppNotification(input: AppNotificationInput) {
+  const payload = {
+    user_id: input.user_id || null,
+    vendor_id: input.vendor_id || null,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    href: input.href,
+  };
+
+  const first = await supabaseAdmin.from("app_notifications").insert(payload);
+
+  if (!first.error) return null;
+
+  const fallback = await supabaseAdmin.from("app_notifications").insert({
+    ...payload,
+    type: "booking_message",
+  });
+
+  return fallback.error;
 }
 
 export async function POST(request: Request) {
@@ -59,6 +90,12 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
+
+    const { data: vendor } = await supabaseAdmin
+      .from("vendors")
+      .select("id, owner_user_id")
+      .eq("id", experience.vendor_id)
+      .maybeSingle();
 
     let requestedStartAt: string | null = null;
     let requestedEndAt: string | null = null;
@@ -141,7 +178,8 @@ export async function POST(request: Request) {
       },
     });
 
-    await supabaseAdmin.from("app_notifications").insert({
+    const vendorNotificationError = await createAppNotification({
+      user_id: vendor?.owner_user_id || null,
       vendor_id: experience.vendor_id,
       type: "booking_request",
       title: "New booking request",
@@ -149,8 +187,18 @@ export async function POST(request: Request) {
       href: `/vendor/leads/${inserted.id}`,
     });
 
+    if (vendorNotificationError) {
+      return NextResponse.json(
+        {
+          error: `Booking created, but vendor notification failed: ${vendorNotificationError.message}`,
+          booking_request_id: inserted.id,
+        },
+        { status: 500 },
+      );
+    }
+
     if (user?.id) {
-      await supabaseAdmin.from("app_notifications").insert({
+      await createAppNotification({
         user_id: user.id,
         type: "booking_request_sent",
         title: "Booking request sent",
