@@ -1,51 +1,25 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import MessageThread from "@/components/booking/message-thread";
+import BookingStatusBadge from "@/components/booking/booking-status-badge";
+import BookingProgress from "@/components/booking/booking-progress";
+import {
+  canTouristCancel,
+  getBookingStatusDescription,
+  getBookingStatusLabel,
+  isAwaitingPayment,
+} from "@/lib/bookings/status";
 
-function headline(contactStatus: string, paymentStatus: string) {
-  if (contactStatus === "confirmed_pending_payment") {
-    return "Accepted — payment needed";
-  }
+function formatDate(value: string | null) {
+  if (!value) return null;
 
-  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
-    return "Paid and confirmed";
-  }
-
-  if (contactStatus === "declined") {
-    return "Request declined";
-  }
-
-  if (contactStatus === "cancelled") {
-    return "Request cancelled";
-  }
-
-  if (contactStatus === "contacted") {
-    return "Vendor reviewed your request";
-  }
-
-  return "Request sent";
-}
-
-function prettyStatus(contactStatus: string, paymentStatus: string) {
-  if (contactStatus === "new") return "New";
-  if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
-  if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
-    return "Paid & confirmed";
-  }
-  if (contactStatus === "contacted") return "Contacted";
-  if (contactStatus === "declined") return "Declined";
-  if (contactStatus === "cancelled") return "Cancelled";
-  return contactStatus;
-}
-
-function canCancel(contactStatus: string, paymentStatus: string) {
-  return (
-    paymentStatus !== "paid" &&
-    ["new", "contacted", "confirmed_pending_payment"].includes(contactStatus)
-  );
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 export default async function AccountBookingDetailPage(props: {
@@ -89,25 +63,11 @@ export default async function AccountBookingDetailPage(props: {
     .eq("booking_request_id", id)
     .order("created_at", { ascending: true });
 
-  const timeline = [
-    { label: "Request sent", active: true },
-    {
-      label: "Vendor accepted",
-      active: ["confirmed_pending_payment", "paid_confirmed"].includes(
-        request.contact_status,
-      ),
-    },
-    {
-      label: "Payment completed",
-      active: request.payment_status === "paid",
-    },
-    {
-      label: "Booking secured",
-      active:
-        request.contact_status === "paid_confirmed" &&
-        request.payment_status === "paid",
-    },
-  ];
+  const requestedTime = formatDate(request.requested_start_at);
+  const statusLabel = getBookingStatusLabel({
+    contactStatus: request.contact_status,
+    paymentStatus: request.payment_status,
+  });
 
   return (
     <main className="page-shell">
@@ -133,16 +93,31 @@ export default async function AccountBookingDetailPage(props: {
         ) : null}
 
         <div className="rounded-[2rem] bg-neutral-950 p-6 text-white shadow-xl sm:p-8">
-          <p className="text-sm text-white/55">Booking request</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight">
-            {request.experiences?.title || "Booking"}
-          </h1>
-          <p className="mt-3 text-white/70">
-            {headline(request.contact_status, request.payment_status)}
-          </p>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm text-white/55">Booking request</p>
+              <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+                {request.experiences?.title || "Booking"}
+              </h1>
+              <p className="mt-3 max-w-2xl text-white/70">
+                {getBookingStatusDescription({
+                  contactStatus: request.contact_status,
+                  paymentStatus: request.payment_status,
+                  viewer: "tourist",
+                })}
+              </p>
+            </div>
+
+            <div className="shrink-0 rounded-2xl bg-white px-4 py-3 text-neutral-950">
+              <BookingStatusBadge
+                contactStatus={request.contact_status}
+                paymentStatus={request.payment_status}
+              />
+            </div>
+          </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {request.contact_status === "confirmed_pending_payment" ? (
+            {isAwaitingPayment({ contactStatus: request.contact_status }) ? (
               <Link
                 href={`/account/bookings/${request.id}/pay`}
                 className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-medium text-neutral-950"
@@ -151,7 +126,18 @@ export default async function AccountBookingDetailPage(props: {
               </Link>
             ) : null}
 
-            {canCancel(request.contact_status, request.payment_status) ? (
+            <Link
+              href={`/messages/${request.id}`}
+              className="inline-flex rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white ring-1 ring-white/15"
+            >
+              <MessageCircle className="mr-2" size={17} />
+              Message partner
+            </Link>
+
+            {canTouristCancel({
+              contactStatus: request.contact_status,
+              paymentStatus: request.payment_status,
+            }) ? (
               <form action={`/api/bookings/${request.id}/cancel`} method="post">
                 <button className="rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white ring-1 ring-white/15">
                   Cancel request
@@ -162,46 +148,37 @@ export default async function AccountBookingDetailPage(props: {
         </div>
 
         <div className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8">
-          <h2 className="text-2xl font-semibold">Progress</h2>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm text-neutral-500">Current status</p>
+              <h2 className="mt-1 text-2xl font-semibold">{statusLabel}</h2>
+            </div>
 
-          {["declined", "cancelled"].includes(request.contact_status) ? (
-            <div className="mt-6 rounded-3xl bg-red-50 p-4 text-sm text-red-700">
-              This request is {prettyStatus(request.contact_status, request.payment_status).toLowerCase()}.
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-3 sm:grid-cols-4">
-              {timeline.map((step) => (
-                <div
-                  key={step.label}
-                  className={`rounded-3xl p-4 ${
-                    step.active
-                      ? "bg-green-50 text-green-800"
-                      : "bg-neutral-50 text-neutral-500"
-                  }`}
-                >
-                  <p className="text-sm font-semibold">{step.label}</p>
-                </div>
-              ))}
-            </div>
-          )}
+            <BookingStatusBadge
+              contactStatus={request.contact_status}
+              paymentStatus={request.payment_status}
+            />
+          </div>
+
+          <div className="mt-6">
+            <BookingProgress
+              contactStatus={request.contact_status}
+              paymentStatus={request.payment_status}
+            />
+          </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <Info label="Guests" value={String(request.guests)} />
             <Info label="Payment" value={request.payment_status} />
-            <Info
-              label="Status"
-              value={prettyStatus(request.contact_status, request.payment_status)}
-            />
+            <Info label="Status" value={statusLabel} />
           </div>
 
-          {request.requested_start_at ? (
+          {requestedTime ? (
             <div className="mt-3 rounded-3xl bg-neutral-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 Requested time
               </p>
-              <p className="mt-1 font-medium">
-                {new Date(request.requested_start_at).toLocaleString()}
-              </p>
+              <p className="mt-1 font-medium">{requestedTime}</p>
             </div>
           ) : null}
 
