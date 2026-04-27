@@ -99,6 +99,7 @@ export async function POST(
     .update({
       status: "cancelled",
       contact_status: "cancelled",
+      payment_due_at: null,
     })
     .eq("id", id)
     .neq("payment_status", "paid");

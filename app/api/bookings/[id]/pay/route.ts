@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { isPaymentExpired } from "@/lib/bookings/payment-deadline";
 
 export async function POST(
   _request: Request,
@@ -20,7 +21,9 @@ export async function POST(
 
   const { data: booking } = await supabaseAdmin
     .from("booking_requests")
-    .select("id, user_id, vendor_id, slot_id, guests, payment_status, contact_status")
+    .select(
+      "id, user_id, vendor_id, slot_id, guests, payment_status, contact_status, payment_due_at",
+    )
     .eq("id", id)
     .single();
 
@@ -35,6 +38,39 @@ export async function POST(
   if (booking.contact_status !== "confirmed_pending_payment") {
     return NextResponse.json(
       { error: "Booking is not awaiting payment" },
+      { status: 400 },
+    );
+  }
+
+  if (isPaymentExpired(booking.payment_due_at)) {
+    await supabaseAdmin
+      .from("booking_requests")
+      .update({
+        status: "expired",
+        contact_status: "expired",
+        expired_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("payment_status", "unpaid");
+
+    await supabaseAdmin.from("app_notifications").insert({
+      vendor_id: booking.vendor_id,
+      type: "booking_status_update",
+      title: "Payment deadline expired",
+      body: "A traveler did not complete payment before the deadline.",
+      href: `/vendor/leads/${id}`,
+    });
+
+    await supabaseAdmin.from("app_notifications").insert({
+      user_id: user.id,
+      type: "booking_status_update",
+      title: "Payment deadline expired",
+      body: "This booking request expired because payment was not completed in time.",
+      href: `/account/bookings/${id}`,
+    });
+
+    return NextResponse.json(
+      { error: "Payment deadline has expired" },
       { status: 400 },
     );
   }
@@ -76,6 +112,7 @@ export async function POST(
       paid_at: new Date().toISOString(),
       contact_status: "paid_confirmed",
       status: "confirmed",
+      payment_due_at: null,
     })
     .eq("id", id)
     .eq("payment_status", "unpaid");

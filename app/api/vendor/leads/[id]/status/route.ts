@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createPaymentDeadline } from "@/lib/bookings/payment-deadline";
 
 const allowed = ["contacted", "confirmed_pending_payment", "declined"] as const;
 
@@ -11,6 +12,7 @@ const transitions: Record<string, string[]> = {
   paid_confirmed: [],
   declined: [],
   cancelled: [],
+  expired: [],
 };
 
 type AppNotificationInput = {
@@ -51,9 +53,13 @@ function notificationTitle(state: string) {
   return "Booking updated";
 }
 
-function notificationBody(state: string) {
+function notificationBody(state: string, paymentDueAt?: string | null) {
   if (state === "confirmed_pending_payment") {
-    return "Your booking request was accepted. Payment is needed to secure it.";
+    const deadlineText = paymentDueAt
+      ? ` Payment is due by ${new Date(paymentDueAt).toLocaleString()}.`
+      : "";
+
+    return `Your booking request was accepted. Payment is needed to secure it.${deadlineText}`;
   }
 
   if (state === "declined") {
@@ -82,6 +88,7 @@ function statusPayload(nextState: string) {
       contact_status: "confirmed_pending_payment",
       payment_status: "unpaid",
       confirmed_at: new Date().toISOString(),
+      payment_due_at: createPaymentDeadline(),
     };
   }
 
@@ -90,6 +97,7 @@ function statusPayload(nextState: string) {
       status: "declined",
       contact_status: "declined",
       payment_status: "unpaid",
+      payment_due_at: null,
     };
   }
 
@@ -134,6 +142,7 @@ export async function POST(
       status,
       contact_status,
       payment_status,
+      payment_due_at,
       experiences (
         title
       )
@@ -215,6 +224,9 @@ export async function POST(
     );
   }
 
+  const paymentDueAt =
+    "payment_due_at" in payload ? String(payload.payment_due_at || "") : null;
+
   await supabaseAdmin.from("notifications_queue").insert({
     type: "booking_status_update",
     recipient_email: lead.guest_email,
@@ -223,6 +235,7 @@ export async function POST(
       booking_request_id: id,
       previous_contact_status: currentState,
       contact_status: nextState,
+      payment_due_at: paymentDueAt,
     },
   });
 
@@ -231,7 +244,7 @@ export async function POST(
       user_id: lead.user_id,
       type: "booking_status_update",
       title: notificationTitle(nextState),
-      body: notificationBody(nextState),
+      body: notificationBody(nextState, paymentDueAt),
       href: `/account/bookings/${id}`,
     });
 
@@ -245,15 +258,6 @@ export async function POST(
         ),
       );
     }
-  } else {
-    return NextResponse.redirect(
-      new URL(
-        `/vendor/leads/${id}?updated=${nextState}&error=${encodeURIComponent(
-          "Status changed, but this booking has no linked tourist account for in-app alerts.",
-        )}`,
-        request.url,
-      ),
-    );
   }
 
   return NextResponse.redirect(
