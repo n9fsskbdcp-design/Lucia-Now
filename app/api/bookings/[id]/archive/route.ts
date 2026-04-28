@@ -46,11 +46,15 @@ export async function POST(
 
   if (!canArchive(booking.contact_status, booking.payment_status)) {
     const redirectTo =
-      role === "vendor" ? `/vendor/leads/${id}` : `/account/bookings/${id}`;
+      role === "vendor" || role === "admin"
+        ? `/vendor/leads/${id}`
+        : `/account/bookings/${id}`;
 
     return NextResponse.redirect(
       new URL(
-        `${redirectTo}?error=Only closed or completed bookings can be archived`,
+        `${redirectTo}?error=${encodeURIComponent(
+          "Only closed or completed bookings can be archived",
+        )}`,
         request.url,
       ),
     );
@@ -84,7 +88,9 @@ export async function POST(
       );
     }
 
-    return NextResponse.redirect(new URL("/vendor?archived=1", request.url));
+    return NextResponse.redirect(
+      new URL("/vendor?archived=1#archived-leads", request.url),
+    );
   }
 
   if (booking.user_id !== user.id) {
@@ -106,5 +112,7 @@ export async function POST(
     );
   }
 
-  return NextResponse.redirect(new URL("/account?archived=1", request.url));
+  return NextResponse.redirect(
+    new URL("/account?archived=1#archived", request.url),
+  );
 }
