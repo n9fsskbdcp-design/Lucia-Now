@@ -44,7 +44,7 @@ function isBlocked(slot: SlotRow, blackouts: BlackoutRow[]) {
   });
 }
 
-function statusLabel(contactStatus: string, paymentStatus: string) {
+function statusLabel(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "new") return "New";
   if (contactStatus === "contacted") return "Contacted";
   if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
@@ -53,15 +53,21 @@ function statusLabel(contactStatus: string, paymentStatus: string) {
   }
   if (contactStatus === "declined") return "Declined";
   if (contactStatus === "cancelled") return "Cancelled";
-  return contactStatus;
+  if (contactStatus === "expired") return "Expired";
+
+  return contactStatus || "New";
 }
 
-function badgeClass(contactStatus: string, paymentStatus: string) {
+function badgeClass(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
     return "bg-green-100 text-green-800";
   }
 
-  if (contactStatus === "declined" || contactStatus === "cancelled") {
+  if (
+    contactStatus === "declined" ||
+    contactStatus === "cancelled" ||
+    contactStatus === "expired"
+  ) {
     return "bg-red-100 text-red-800";
   }
 
@@ -76,31 +82,36 @@ function badgeClass(contactStatus: string, paymentStatus: string) {
   return "bg-neutral-100 text-neutral-700";
 }
 
-function statusIcon(contactStatus: string, paymentStatus: string) {
+function statusIcon(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
-    return <CheckCircle2 size={15} />;
+    return <CheckCircle2 size={14} />;
   }
 
-  if (contactStatus === "declined" || contactStatus === "cancelled") {
-    return <XCircle size={15} />;
+  if (
+    contactStatus === "declined" ||
+    contactStatus === "cancelled" ||
+    contactStatus === "expired"
+  ) {
+    return <XCircle size={14} />;
   }
 
   if (contactStatus === "confirmed_pending_payment") {
-    return <CreditCard size={15} />;
+    return <CreditCard size={14} />;
   }
 
-  return <Clock size={15} />;
+  return <Clock size={14} />;
 }
 
-function canArchive(contactStatus: string, paymentStatus: string) {
+function canArchive(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "declined") return true;
   if (contactStatus === "cancelled") return true;
+  if (contactStatus === "expired") return true;
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") return true;
 
   return false;
 }
 
-function formatDate(value: string | null) {
+function formatDate(value?: string | null) {
   if (!value) return null;
 
   return new Date(value).toLocaleString(undefined, {
@@ -192,8 +203,11 @@ export default async function VendorPage(props: {
     (lead) =>
       lead.contact_status === "paid_confirmed" && lead.payment_status === "paid",
   );
-  const closedLeads = leads.filter((lead) =>
-    ["declined", "cancelled"].includes(lead.contact_status),
+  const closedLeads = leads.filter(
+    (lead) =>
+      lead.contact_status === "declined" ||
+      lead.contact_status === "cancelled" ||
+      lead.contact_status === "expired",
   );
 
   const liveCount = (experiences ?? []).filter(
@@ -206,15 +220,15 @@ export default async function VendorPage(props: {
 
   return (
     <main className="page-shell">
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
         {searchParams.archived ? (
-          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
             Lead moved to archive.
           </div>
         ) : null}
 
         {searchParams.restored ? (
-          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
             Lead restored.
           </div>
         ) : null}
@@ -224,10 +238,10 @@ export default async function VendorPage(props: {
 
           <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-4xl font-semibold tracking-tight">
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
                 {vendor.business_name || "Vendor dashboard"}
               </h1>
-              <p className="mt-2 text-white/65">
+              <p className="mt-2 text-sm text-white/65 sm:text-base">
                 Manage active leads, confirmed bookings, and archived records.
               </p>
             </div>
@@ -251,68 +265,32 @@ export default async function VendorPage(props: {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric icon={<Sparkles size={18} />} label="Live experiences" value={liveCount} />
+          <Metric icon={<ListChecks size={18} />} label="Active leads" value={leads.length} />
           <Metric
-            icon={<Sparkles size={20} />}
-            label="Live experiences"
-            value={liveCount}
-          />
-          <Metric
-            icon={<ListChecks size={20} />}
-            label="Active leads"
-            value={leads.length}
-          />
-          <Metric
-            icon={<ListChecks size={20} />}
+            icon={<ListChecks size={18} />}
             label="New leads"
             value={newLeads.length}
             highlight={newLeads.length > 0}
           />
+          <Metric icon={<Archive size={18} />} label="Archived" value={archivedLeads.length} />
+          <Metric icon={<CalendarDays size={18} />} label="Open slots" value={openSlotsCount} />
           <Metric
-            icon={<Archive size={20} />}
-            label="Archived"
-            value={archivedLeads.length}
-          />
-        </div>
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric
-            icon={<CalendarDays size={20} />}
-            label="Open slots"
-            value={openSlotsCount}
-          />
-          <Metric
-            icon={<CreditCard size={20} />}
+            icon={<CreditCard size={18} />}
             label="Awaiting payment"
             value={awaitingPaymentLeads.length}
             highlight={awaitingPaymentLeads.length > 0}
           />
-          <Metric
-            icon={<CheckCircle2 size={20} />}
-            label="Confirmed"
-            value={confirmedLeads.length}
-          />
-          <Metric
-            icon={<XCircle size={20} />}
-            label="Closed"
-            value={closedLeads.length}
-          />
+          <Metric icon={<CheckCircle2 size={18} />} label="Confirmed" value={confirmedLeads.length} />
+          <Metric icon={<XCircle size={18} />} label="Closed" value={closedLeads.length} />
         </div>
 
-        <nav className="mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-black/5">
+        <nav className="sticky top-16 z-20 mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white/95 p-2 shadow-sm ring-1 ring-black/5 backdrop-blur">
           <Jump href="#new-leads" label={`New (${newLeads.length})`} />
-          <Jump
-            href="#contacted-leads"
-            label={`Contacted (${contactedLeads.length})`}
-          />
-          <Jump
-            href="#awaiting-payment"
-            label={`Awaiting payment (${awaitingPaymentLeads.length})`}
-          />
-          <Jump
-            href="#confirmed-leads"
-            label={`Confirmed (${confirmedLeads.length})`}
-          />
+          <Jump href="#contacted-leads" label={`Contacted (${contactedLeads.length})`} />
+          <Jump href="#awaiting-payment" label={`Awaiting payment (${awaitingPaymentLeads.length})`} />
+          <Jump href="#confirmed-leads" label={`Confirmed (${confirmedLeads.length})`} />
           <Jump href="#closed-leads" label={`Closed (${closedLeads.length})`} />
           <Jump href="#archived-leads" label={`Archived (${archivedLeads.length})`} />
         </nav>
@@ -362,9 +340,9 @@ export default async function VendorPage(props: {
           id="closed-leads"
           eyebrow="Archive-ready"
           title="Closed requests"
-          subtitle="Declined or cancelled requests. Archive these to clean up the main dashboard."
+          subtitle="Declined, cancelled, or expired requests. Archive these to clean up the main dashboard."
           emptyTitle="No closed requests"
-          emptyBody="Declined or cancelled requests will appear here."
+          emptyBody="Declined, cancelled, or expired requests will appear here."
           leads={closedLeads}
         />
 
@@ -396,13 +374,13 @@ function Metric({
 }) {
   return (
     <div
-      className={`rounded-3xl p-5 shadow-sm ring-1 ring-black/5 ${
+      className={`rounded-2xl p-4 shadow-sm ring-1 ring-black/5 ${
         highlight ? "bg-amber-50" : "bg-white"
       }`}
     >
       <div className="text-neutral-500">{icon}</div>
-      <p className="mt-4 text-sm text-neutral-500">{label}</p>
-      <p className="mt-1 text-3xl font-semibold">{value}</p>
+      <p className="mt-3 text-xs text-neutral-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
   );
 }
@@ -442,35 +420,45 @@ function LeadSection({
   return (
     <section
       id={id}
-      className={`mt-6 scroll-mt-24 rounded-[2rem] p-5 shadow-sm ring-1 sm:p-8 ${
+      className={`mt-6 scroll-mt-28 rounded-[2rem] p-4 shadow-sm ring-1 sm:p-6 ${
         dark
           ? "bg-neutral-950 text-white ring-neutral-950"
           : "bg-white ring-black/5"
       }`}
     >
-      <div>
-        <p className={dark ? "text-sm text-white/55" : "text-sm text-neutral-500"}>
-          {eyebrow}
-        </p>
-        <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
-        <p className={dark ? "mt-2 text-sm text-white/60" : "mt-2 text-sm text-neutral-500"}>
-          {subtitle}
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className={dark ? "text-sm text-white/55" : "text-sm text-neutral-500"}>
+            {eyebrow}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold sm:text-2xl">{title}</h2>
+          <p className={dark ? "mt-1 text-sm text-white/60" : "mt-1 text-sm text-neutral-500"}>
+            {subtitle}
+          </p>
+        </div>
+
+        <span
+          className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+            dark ? "bg-white/10 text-white" : "bg-neutral-100 text-neutral-700"
+          }`}
+        >
+          {leads.length}
+        </span>
       </div>
 
       {leads.length === 0 ? (
         <div
-          className={`mt-6 rounded-3xl p-8 text-center ${
+          className={`mt-4 rounded-2xl p-5 text-center ${
             dark ? "bg-white/10 text-white/65" : "bg-neutral-50 text-neutral-500"
           }`}
         >
           <p className="font-medium">{emptyTitle}</p>
-          <p className="mt-2 text-sm">{emptyBody}</p>
+          <p className="mt-1 text-sm">{emptyBody}</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-3">
+        <div className="mt-4 grid gap-2">
           {leads.map((request) => (
-            <LeadCard
+            <LeadRow
               key={request.id}
               request={request}
               dark={dark}
@@ -483,7 +471,7 @@ function LeadSection({
   );
 }
 
-function LeadCard({
+function LeadRow({
   request,
   dark = false,
   archived = false,
@@ -497,34 +485,23 @@ function LeadCard({
 
   return (
     <div
-      className={`rounded-3xl p-4 transition sm:p-5 ${
+      className={`grid gap-3 rounded-2xl p-4 transition md:grid-cols-[1.5fr_1fr_auto] md:items-center ${
         dark
           ? "bg-white/10 text-white ring-1 ring-white/10"
-          : "bg-neutral-50"
+          : "bg-neutral-50 hover:bg-neutral-100"
       }`}
     >
-      <Link href={`/vendor/leads/${request.id}`} className="block">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold">
-              {request.experiences?.title || "Experience"}
-            </h3>
-
-            <div
-              className={`mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm ${
-                dark ? "text-white/65" : "text-neutral-500"
-              }`}
-            >
-              <span>{request.guest_name}</span>
-              <span>
-                {request.guests} guest{request.guests === 1 ? "" : "s"}
-              </span>
-              {requestedTime ? <span>{requestedTime}</span> : null}
-            </div>
-          </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/vendor/leads/${request.id}`}
+            className="truncate text-sm font-semibold hover:text-orange-600"
+          >
+            {request.experiences?.title || "Experience"}
+          </Link>
 
           <span
-            className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(
               request.contact_status,
               request.payment_status,
             )}`}
@@ -534,46 +511,70 @@ function LeadCard({
           </span>
         </div>
 
-        <p
-          className={`mt-4 text-sm font-medium ${
-            dark ? "text-white" : "text-neutral-950"
+        <div
+          className={`mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs ${
+            dark ? "text-white/65" : "text-neutral-500"
           }`}
         >
-          Open lead →
-        </p>
-      </Link>
+          <span>{request.guest_name || "Traveler"}</span>
+          <span>
+            {request.guests || 1} guest{request.guests === 1 ? "" : "s"}
+          </span>
+          {requestedTime ? <span>{requestedTime}</span> : null}
+        </div>
+      </div>
 
-      {archiveAllowed ? (
-        <form
-          action={
-            archived
-              ? `/api/bookings/${request.id}/unarchive`
-              : `/api/bookings/${request.id}/archive`
-          }
-          method="post"
-          className="mt-4"
+      <div className={`text-xs ${dark ? "text-white/65" : "text-neutral-500"}`}>
+        <div className={dark ? "text-white" : "text-neutral-900"}>
+          {request.guest_email || request.email || "No email shown"}
+        </div>
+        <div>{request.guest_phone || request.phone || "No phone shown"}</div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+        <Link
+          href={`/vendor/leads/${request.id}`}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+            dark
+              ? "bg-white text-neutral-950"
+              : "bg-white text-neutral-800 shadow-sm ring-1 ring-black/5"
+          }`}
         >
-          <button
-            className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
-              dark
-                ? "bg-white/10 text-white ring-1 ring-white/15"
-                : "bg-white text-neutral-700 shadow-sm ring-1 ring-black/5"
-            }`}
+          Open
+        </Link>
+
+        {archiveAllowed ? (
+          <form
+            action={
+              archived
+                ? `/api/bookings/${request.id}/unarchive`
+                : `/api/bookings/${request.id}/archive`
+            }
+            method="post"
           >
-            {archived ? (
-              <>
-                <RotateCcw className="mr-2" size={16} />
-                Restore
-              </>
-            ) : (
-              <>
-                <Archive className="mr-2" size={16} />
-                Archive
-              </>
-            )}
-          </button>
-        </form>
-      ) : null}
+            <button
+              type="submit"
+              className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${
+                dark
+                  ? "bg-white/10 text-white ring-1 ring-white/15"
+                  : "bg-white text-neutral-700 shadow-sm ring-1 ring-black/5"
+              }`}
+            >
+              {archived ? (
+                <>
+                  <RotateCcw className="mr-1.5" size={14} />
+                  Restore
+                </>
+              ) : (
+                <>
+                  <Archive className="mr-1.5" size={14} />
+                  Archive
+                </>
+              )}
+            </button>
+          </form>
+        ) : null}
+      </div>
     </div>
   );
 }
