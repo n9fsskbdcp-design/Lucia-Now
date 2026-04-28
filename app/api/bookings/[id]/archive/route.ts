@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-function canArchive(contactStatus: string, paymentStatus: string) {
+function canArchive(contactStatus: string | null, paymentStatus: string | null) {
   if (contactStatus === "declined") return true;
   if (contactStatus === "cancelled") return true;
+  if (contactStatus === "expired") return true;
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") return true;
 
   return false;
