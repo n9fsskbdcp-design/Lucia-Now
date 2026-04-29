@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-function getVendorRestorePath(contactStatus: string, paymentStatus: string) {
+function getVendorRestorePath(contactStatus: string | null, paymentStatus: string | null) {
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
     return "/vendor?restored=1#confirmed-leads";
   }
@@ -10,7 +10,7 @@ function getVendorRestorePath(contactStatus: string, paymentStatus: string) {
   return "/vendor?restored=1#closed-leads";
 }
 
-function getTouristRestorePath(contactStatus: string, paymentStatus: string) {
+function getTouristRestorePath(contactStatus: string | null, paymentStatus: string | null) {
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
     return "/account?restored=1#confirmed";
   }
