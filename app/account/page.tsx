@@ -15,7 +15,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-function prettyStatus(contactStatus: string, paymentStatus: string) {
+function prettyStatus(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "new") return "Request sent";
   if (contactStatus === "confirmed_pending_payment") return "Awaiting payment";
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") {
@@ -24,10 +24,12 @@ function prettyStatus(contactStatus: string, paymentStatus: string) {
   if (contactStatus === "contacted") return "Reviewed";
   if (contactStatus === "declined") return "Declined";
   if (contactStatus === "cancelled") return "Cancelled";
-  return contactStatus;
+  if (contactStatus === "expired") return "Expired";
+
+  return contactStatus || "Request sent";
 }
 
-function statusClass(contactStatus: string, paymentStatus: string) {
+function statusClass(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "confirmed_pending_payment") {
     return "bg-amber-100 text-amber-800";
   }
@@ -36,7 +38,11 @@ function statusClass(contactStatus: string, paymentStatus: string) {
     return "bg-green-100 text-green-800";
   }
 
-  if (["declined", "cancelled"].includes(contactStatus)) {
+  if (
+    contactStatus === "declined" ||
+    contactStatus === "cancelled" ||
+    contactStatus === "expired"
+  ) {
     return "bg-red-100 text-red-800";
   }
 
@@ -47,7 +53,7 @@ function statusClass(contactStatus: string, paymentStatus: string) {
   return "bg-neutral-100 text-neutral-700";
 }
 
-function statusIcon(contactStatus: string, paymentStatus: string) {
+function statusIcon(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "confirmed_pending_payment") {
     return <CreditCard size={18} />;
   }
@@ -56,7 +62,11 @@ function statusIcon(contactStatus: string, paymentStatus: string) {
     return <CheckCircle2 size={18} />;
   }
 
-  if (["declined", "cancelled"].includes(contactStatus)) {
+  if (
+    contactStatus === "declined" ||
+    contactStatus === "cancelled" ||
+    contactStatus === "expired"
+  ) {
     return <XCircle size={18} />;
   }
 
@@ -67,15 +77,16 @@ function statusIcon(contactStatus: string, paymentStatus: string) {
   return <Clock size={18} />;
 }
 
-function canArchive(contactStatus: string, paymentStatus: string) {
+function canArchive(contactStatus?: string | null, paymentStatus?: string | null) {
   if (contactStatus === "declined") return true;
   if (contactStatus === "cancelled") return true;
+  if (contactStatus === "expired") return true;
   if (contactStatus === "paid_confirmed" && paymentStatus === "paid") return true;
 
   return false;
 }
 
-function formatDate(value: string | null) {
+function formatDate(value?: string | null) {
   if (!value) return null;
 
   return new Date(value).toLocaleString(undefined, {
@@ -133,21 +144,24 @@ export default async function AccountPage(props: {
       item.contact_status === "paid_confirmed" && item.payment_status === "paid",
   );
 
-  const closedBookings = bookings.filter((item) =>
-    ["declined", "cancelled"].includes(item.contact_status),
+  const closedBookings = bookings.filter(
+    (item) =>
+      item.contact_status === "declined" ||
+      item.contact_status === "cancelled" ||
+      item.contact_status === "expired",
   );
 
   return (
     <main className="page-shell">
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
         {searchParams.archived ? (
-          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
             Booking moved to archive.
           </div>
         ) : null}
 
         {searchParams.restored ? (
-          <div className="mb-4 rounded-3xl bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
             Booking restored.
           </div>
         ) : null}
@@ -175,7 +189,7 @@ export default async function AccountPage(props: {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             icon={<User size={20} />}
             label="Signed in as"
@@ -200,7 +214,7 @@ export default async function AccountPage(props: {
           />
         </div>
 
-        <nav className="mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-black/5">
+        <nav className="sticky top-16 z-20 mt-6 flex gap-2 overflow-x-auto rounded-[2rem] bg-white/95 p-2 shadow-sm ring-1 ring-black/5 backdrop-blur">
           <Jump href="#awaiting-payment" label={`Payment (${awaitingPayment.length})`} />
           <Jump href="#new-requests" label={`New (${newRequests.length})`} />
           <Jump href="#reviewed" label={`Reviewed (${contactedRequests.length})`} />
@@ -212,7 +226,7 @@ export default async function AccountPage(props: {
         {awaitingPayment.length > 0 ? (
           <section
             id="awaiting-payment"
-            className="mt-6 scroll-mt-24 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-xl sm:p-8"
+            className="mt-6 scroll-mt-28 rounded-[2rem] bg-neutral-950 p-5 text-white shadow-xl sm:p-8"
           >
             <p className="text-sm text-white/55">Action needed</p>
             <h2 className="mt-1 text-2xl font-semibold">
@@ -264,9 +278,9 @@ export default async function AccountPage(props: {
         <BookingSection
           id="closed"
           title="Closed requests"
-          subtitle="Declined or cancelled requests. You can archive these to clean up your dashboard."
+          subtitle="Declined, cancelled, or expired requests. You can archive these to clean up your dashboard."
           emptyTitle="No closed requests"
-          emptyBody="Cancelled or declined requests will appear here."
+          emptyBody="Cancelled, declined, or expired requests will appear here."
           bookings={closedBookings}
         />
 
@@ -299,15 +313,15 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-3xl p-5 shadow-sm ring-1 ring-black/5 ${
+      className={`rounded-2xl p-4 shadow-sm ring-1 ring-black/5 ${
         highlight ? "bg-amber-50" : "bg-white"
       }`}
     >
       <div className="text-neutral-500">{icon}</div>
-      <p className="mt-4 text-sm text-neutral-500">{label}</p>
+      <p className="mt-3 text-xs text-neutral-500">{label}</p>
       <p
         className={`mt-1 font-semibold ${
-          small ? "truncate text-base" : "text-3xl"
+          small ? "truncate text-base" : "text-2xl"
         }`}
       >
         {value}
@@ -341,7 +355,7 @@ function EmptyAnchoredSection({
   return (
     <section
       id={id}
-      className="mt-6 scroll-mt-24 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
+      className="mt-6 scroll-mt-28 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
     >
       <h2 className="text-2xl font-semibold">{title}</h2>
       <div className="mt-6 rounded-3xl bg-neutral-50 p-8 text-center">
@@ -372,12 +386,18 @@ function BookingSection({
   return (
     <section
       id={id}
-      className="mt-6 scroll-mt-24 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
+      className="mt-6 scroll-mt-28 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
     >
-      <div>
-        <p className="text-sm text-neutral-500">Bookings</p>
-        <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
-        <p className="mt-2 text-sm text-neutral-500">{subtitle}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-neutral-500">Bookings</p>
+          <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
+          <p className="mt-2 text-sm text-neutral-500">{subtitle}</p>
+        </div>
+
+        <span className="w-fit rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700">
+          {bookings.length}
+        </span>
       </div>
 
       {bookings.length === 0 ? (
@@ -429,7 +449,7 @@ function BookingCard({
               }`}
             >
               <span>
-                {request.guests} guest{request.guests === 1 ? "" : "s"}
+                {request.guests || 1} guest{request.guests === 1 ? "" : "s"}
               </span>
 
               {requestedTime ? <span>{requestedTime}</span> : null}
@@ -469,6 +489,7 @@ function BookingCard({
           className="mt-4"
         >
           <button
+            type="submit"
             className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-medium ${
               dark
                 ? "bg-white/10 text-white ring-1 ring-white/15"
